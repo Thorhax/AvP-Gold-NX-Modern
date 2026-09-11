@@ -38,9 +38,7 @@
 
 int SelectDirectDrawObject(void *pGUID);
                     
-extern void StartMenuBackgroundBink(void);
-extern int PlayMenuBackgroundBink(void);
-extern void EndMenuBackgroundBink(void);
+#include "bink.h"
 
 
 /* KJL 11:22:37 23/06/98 - Hopefully these will be the final menus! */
@@ -182,6 +180,10 @@ extern SCREENDESCRIPTORBLOCK ScreenDescriptorBlock;
 extern int TimeScale;
 
 static AVP_MENUS AvPMenus;
+int AvPMenus_UserChangingKeyConfig(void)
+{
+	return AvPMenus.UserChangingKeyConfig;
+}
 extern AVPMENU  AvPMenusData[];
 
 extern int AlienEpisodeToPlay;
@@ -3395,7 +3397,7 @@ static void RenderMenuElement(AVPMENU_ELEMENT *elementPtr, int e, int y)
 	
 	if (AvPMenus.FontToUse==AVPMENU_FONT_BIG)
 	{
-		RenderText = RenderMenuText;
+		RenderText = (int (*)(char *, int, int, int, enum AVPMENUFORMAT_ID)) RenderMenuText;
 		MenuTextLength = LengthOfMenuText;
 	}
 	else

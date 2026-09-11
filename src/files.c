@@ -346,16 +346,17 @@ static char *FixFilename(const char *filename, const char *prefix, int force)
 	int flen;
 	int plen;
 	
-	plen = strlen(prefix) + 1;
-	flen = strlen(filename) + plen + 1;
+	plen = strlen(prefix);
+	int need_sep = (plen > 0 && prefix[plen-1] != '/' && prefix[plen-1] != '\\');
+	flen = strlen(filename) + plen + (need_sep ? 1 : 0) + 1;
 	
 	f = (char *)malloc(flen);
 	strcpy(f, prefix);
-	strcat(f, DIR_SEPARATOR);
+	if (need_sep) strcat(f, DIR_SEPARATOR);
 	strcat(f, filename);
 	
 	/* only the filename part needs to be modified */
-	ptr = &f[plen+1];
+	ptr = &f[plen + (need_sep ? 1 : 0)];
 	
 	while (*ptr) {
 		if ((*ptr == '/') || (*ptr == '\\') || (*ptr == ':')) {
@@ -892,7 +893,7 @@ void InitGameDirectories(char *argv0)
 	extern char *SecondSoundDir;
 	
 	char tmppath[PATH_MAX];
-	char *homedir, *gamedir, *localdir, *tmp;
+	char *homedir, *gamedir = NULL, *localdir, *tmp = NULL;
 	char *path;
 	size_t len, copylen;
 	
@@ -917,8 +918,18 @@ void InitGameDirectories(char *argv0)
 	5. current directory
 	*/
 	
+#if defined(__SWITCH__)
+	if (check_game_directory("romfs:")) {
+		gamedir = "romfs:";
+	} else if (check_game_directory("sdmc:/switch/avpgold")) {
+		gamedir = "sdmc:/switch/avpgold";
+	}
+#endif
+
 	/* 1. $AVP_DATA */
-	gamedir = getenv("AVP_DATA");
+	if (gamedir == NULL) {
+		gamedir = getenv("AVP_DATA");
+	}
 	
 	/* $AVP_DATA overrides all, so no check */
 	
@@ -994,6 +1005,18 @@ void InitGameDirectories(char *argv0)
 		fprintf(stderr, "are all game files lowercase?\n");
 		exit(EXIT_FAILURE);
 	}
+
+#if defined(__SWITCH__)
+	free(localdir);
+	struct stat st;
+	if (stat("sdmc:/switch/avpgold", &st) == 0) {
+		localdir = strdup("sdmc:/switch/avpgold");
+	} else if (gamedir && strcmp(gamedir, "romfs:") != 0) {
+		localdir = strdup(gamedir);
+	} else {
+		localdir = strdup(".");
+	}
+#endif
 
 	SetGameDirectories(localdir, gamedir);
 	

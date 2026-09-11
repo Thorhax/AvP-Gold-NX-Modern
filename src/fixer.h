@@ -35,6 +35,7 @@
 #include <string.h>
 #include <limits.h>
 #include <inttypes.h> /* int64_t */
+#include <math.h>
 
 #include "files.h"
 

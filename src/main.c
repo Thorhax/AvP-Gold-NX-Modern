@@ -1409,26 +1409,42 @@ void CheckForWindowsMessages()
 		numbuttons = SDL_JoystickNumButtons(joy);
 		if (numbuttons > 16) numbuttons = 16;
 		
+		int in_menu = (main_loop_state != 5 || InGameMenusAreRunning());
+		extern int AvPMenus_UserChangingKeyConfig(void);
+		int key_config_active = in_menu && AvPMenus_UserChangingKeyConfig();
+
 		for (x = 0; x < numbuttons; x++) {
-			if (SDL_JoystickGetButton(joy, x)) {
+			int btn_state = SDL_JoystickGetButton(joy, x);
+			if (btn_state) {
 				GotAnyKey = 1;
-				if(KEY_JOYSTICK_BUTTON_1+x == KEY_JOYSTICK_BUTTON_12)
-				{
-					if (!KeyboardInput[KEY_CR]) {
-						KeyboardInput[KEY_CR] = 1;
-						DebouncedKeyboardInput[KEY_CR] = 1;
-						DebouncedGotAnyKey = 1;
+				if (in_menu && !key_config_active) {
+					// Menu controls: A = Confirm (KEY_CR), B = Back (KEY_ESCAPE), Plus = Back, Minus = Confirm
+					if (x == 0 || x == 11) { // A or Minus
+						if (!KeyboardInput[KEY_CR]) {
+							KeyboardInput[KEY_CR] = 1;
+							DebouncedKeyboardInput[KEY_CR] = 1;
+							DebouncedGotAnyKey = 1;
+						}
+						continue;
 					}
-					continue;
-				}
-				else if(KEY_JOYSTICK_BUTTON_1+x == KEY_JOYSTICK_BUTTON_11)
-				{
-					if (!KeyboardInput[KEY_ESCAPE]) {
-						KeyboardInput[KEY_ESCAPE] = 1;
-						DebouncedKeyboardInput[KEY_ESCAPE] = 1;
-						DebouncedGotAnyKey = 1;
+					else if (x == 1 || x == 10) { // B or Plus
+						if (!KeyboardInput[KEY_ESCAPE]) {
+							KeyboardInput[KEY_ESCAPE] = 1;
+							DebouncedKeyboardInput[KEY_ESCAPE] = 1;
+							DebouncedGotAnyKey = 1;
+						}
+						continue;
 					}
-					continue;
+				} else if (!in_menu) {
+					// In-game: Plus button toggles in-game pause menu
+					if (x == 10) { // Plus
+						if (!KeyboardInput[KEY_ESCAPE]) {
+							KeyboardInput[KEY_ESCAPE] = 1;
+							DebouncedKeyboardInput[KEY_ESCAPE] = 1;
+							DebouncedGotAnyKey = 1;
+						}
+						continue;
+					}
 				}
 				
 				if (!KeyboardInput[KEY_JOYSTICK_BUTTON_1+x]) {
@@ -1437,19 +1453,23 @@ void CheckForWindowsMessages()
 					DebouncedGotAnyKey = 1;
 				}
 			} else {
-				if(KEY_JOYSTICK_BUTTON_1+x == KEY_JOYSTICK_BUTTON_12)
-				{
-					KeyboardInput[KEY_CR] = 0;
-				}
-				else if(KEY_JOYSTICK_BUTTON_1+x == KEY_JOYSTICK_BUTTON_11)
-				{
-					KeyboardInput[KEY_ESCAPE] = 0;
+				if (in_menu && !key_config_active) {
+					if (x == 0 || x == 11) {
+						KeyboardInput[KEY_CR] = 0;
+					}
+					else if (x == 1 || x == 10) {
+						KeyboardInput[KEY_ESCAPE] = 0;
+					}
+				} else if (!in_menu) {
+					if (x == 10) {
+						KeyboardInput[KEY_ESCAPE] = 0;
+					}
 				}
 				KeyboardInput[KEY_JOYSTICK_BUTTON_1+x] = 0;
 			}	
 		}
 
-		if(main_loop_state != 5 || InGameMenusAreRunning()) { /* Not Ingame */
+		if(in_menu) { /* In Menus: D-pad and left analog stick navigate */
 			#ifndef JOYSTICK_DEAD_ZONE
 			#define JOYSTICK_DEAD_ZONE 6000
 			#endif
@@ -1464,37 +1484,56 @@ void CheckForWindowsMessages()
 				yPos = SDL_JoystickGetAxis(joy, 1) + 32768;
 			}
 			
+			Uint8 hat = (SDL_JoystickNumHats(joy) > 0) ? SDL_JoystickGetHat(joy, 0) : 0;
 			int yAxis = (32768-yPos)*2;
-			if(yAxis>JOYSTICK_DEAD_ZONE)
-			{
-				KeyboardInput[KEY_UP] = 1;
-				DebouncedKeyboardInput[KEY_UP] = 1;
-			}	
-			else if(yAxis<-JOYSTICK_DEAD_ZONE)
-			{
-				KeyboardInput[KEY_DOWN] = 1;
-				DebouncedKeyboardInput[KEY_DOWN] = 1;
-			}
-			else
-			{
+			int xAxis = (xPos-32768)*2;
+
+			int up_pressed = (SDL_JoystickGetButton(joy, 13) || (hat & SDL_HAT_UP) || (yAxis > JOYSTICK_DEAD_ZONE));
+			int down_pressed = (SDL_JoystickGetButton(joy, 15) || (hat & SDL_HAT_DOWN) || (yAxis < -JOYSTICK_DEAD_ZONE));
+			int left_pressed = (SDL_JoystickGetButton(joy, 12) || (hat & SDL_HAT_LEFT) || (xAxis < -JOYSTICK_DEAD_ZONE));
+			int right_pressed = (SDL_JoystickGetButton(joy, 14) || (hat & SDL_HAT_RIGHT) || (xAxis > JOYSTICK_DEAD_ZONE));
+
+			if (up_pressed) {
+				GotAnyKey = 1;
+				if (!KeyboardInput[KEY_UP]) {
+					KeyboardInput[KEY_UP] = 1;
+					DebouncedKeyboardInput[KEY_UP] = 1;
+					DebouncedGotAnyKey = 1;
+				}
+			} else {
 				KeyboardInput[KEY_UP] = 0;
+			}
+
+			if (down_pressed) {
+				GotAnyKey = 1;
+				if (!KeyboardInput[KEY_DOWN]) {
+					KeyboardInput[KEY_DOWN] = 1;
+					DebouncedKeyboardInput[KEY_DOWN] = 1;
+					DebouncedGotAnyKey = 1;
+				}
+			} else {
 				KeyboardInput[KEY_DOWN] = 0;
 			}
 
-			int xAxis = (xPos-32768)*2;
-			if(xAxis>JOYSTICK_DEAD_ZONE)
-			{
-				KeyboardInput[KEY_RIGHT] = 1;
-				DebouncedKeyboardInput[KEY_RIGHT] = 1;
-			}	
-			else if(xAxis<-JOYSTICK_DEAD_ZONE)
-			{
-				KeyboardInput[KEY_LEFT] = 1;
-				DebouncedKeyboardInput[KEY_LEFT] = 1;
-			}
-			else
-			{
+			if (left_pressed) {
+				GotAnyKey = 1;
+				if (!KeyboardInput[KEY_LEFT]) {
+					KeyboardInput[KEY_LEFT] = 1;
+					DebouncedKeyboardInput[KEY_LEFT] = 1;
+					DebouncedGotAnyKey = 1;
+				}
+			} else {
 				KeyboardInput[KEY_LEFT] = 0;
+			}
+
+			if (right_pressed) {
+				GotAnyKey = 1;
+				if (!KeyboardInput[KEY_RIGHT]) {
+					KeyboardInput[KEY_RIGHT] = 1;
+					DebouncedKeyboardInput[KEY_RIGHT] = 1;
+					DebouncedGotAnyKey = 1;
+				}
+			} else {
 				KeyboardInput[KEY_RIGHT] = 0;
 			}
 		}
@@ -1711,9 +1750,11 @@ static int menusActive = 0;
 static int thisLevelHasBeenCompleted = 0;
 
 extern void setup_nxlink(void);
+extern void cleanup_nxlink(void);
 int main(int argc, char *argv[])
 {			
 	setup_nxlink();
+	atexit(cleanup_nxlink);
 	
 #if !defined(_MSC_VER)
 	int c;

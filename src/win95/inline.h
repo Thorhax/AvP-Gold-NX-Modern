@@ -1,6 +1,8 @@
 #ifndef INLINE_INCLUDED
 #define INLINE_INCLUDED
 
+#include <math.h>
+
 #ifndef min
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif

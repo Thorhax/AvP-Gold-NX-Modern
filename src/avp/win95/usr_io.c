@@ -627,22 +627,22 @@ PLAYER_INPUT_CONFIGURATION DefaultMarineInputSecondaryConfig =
 	KEY_NUMPAD2,		// LookDown;
 	KEY_NUMPAD5,		// CentreView;
 
-	KEY_VOID,		// Walk;
-	KEY_VOID, 		// Crouch;
-	KEY_MMOUSE,			// Jump;
+	KEY_JOYSTICK_BUTTON_5,		// Walk;
+	KEY_JOYSTICK_BUTTON_3, 		// Crouch;
+	KEY_JOYSTICK_BUTTON_2,		// Jump;
 
-	KEY_CR,				// Operate;
+	KEY_JOYSTICK_BUTTON_1,		// Operate;
 
-	KEY_NUMPAD0, 		// FirePrimaryWeapon;
-	KEY_NUMPADDEL, 		// FireSecondaryWeapon;
+	KEY_JOYSTICK_BUTTON_10, 	// FirePrimaryWeapon;
+	KEY_JOYSTICK_BUTTON_9, 		// FireSecondaryWeapon;
 
-    {KEY_MOUSEWHEELUP},  	// NextWeapon;
-    {KEY_MOUSEWHEELDOWN},	// PreviousWeapon;
+    {KEY_JOYSTICK_BUTTON_8},  	// NextWeapon;
+    {KEY_JOYSTICK_BUTTON_7},  	// PreviousWeapon;
     {KEY_VOID},			// FlashbackWeapon;
 
-    {KEY_VOID},			// ImageIntensifier;
-    {KEY_VOID}, 		// ThrowFlare;
-    {KEY_VOID}, 		// Jetpack;
+    {KEY_JOYSTICK_BUTTON_4},	// ImageIntensifier;
+    {KEY_JOYSTICK_BUTTON_12}, 	// ThrowFlare;
+    {KEY_JOYSTICK_BUTTON_6}, 	// Jetpack;
     {KEY_VOID},			// Taunt
 
     {KEY_VOID},
@@ -669,25 +669,25 @@ PLAYER_INPUT_CONFIGURATION DefaultPredatorInputSecondaryConfig =
 	KEY_NUMPAD2,		// LookDown;
 	KEY_NUMPAD5,		// CentreView;
 
-	KEY_VOID,		// Walk;
-	KEY_VOID, 		// Crouch;
-	KEY_MMOUSE,			// Jump;
+	KEY_JOYSTICK_BUTTON_5,		// Walk;
+	KEY_JOYSTICK_BUTTON_3, 		// Crouch;
+	KEY_JOYSTICK_BUTTON_2,		// Jump;
 
-	KEY_CR,				// Operate;
+	KEY_JOYSTICK_BUTTON_1,		// Operate;
 
-	KEY_NUMPAD0, 		// FirePrimaryWeapon;
-	KEY_NUMPADDEL, 		// FireSecondaryWeapon;
+	KEY_JOYSTICK_BUTTON_10, 	// FirePrimaryWeapon;
+	KEY_JOYSTICK_BUTTON_9, 		// FireSecondaryWeapon;
 
-    {KEY_VOID},			// NextWeapon;
-    {KEY_VOID}, 		// PreviousWeapon;
+    {KEY_JOYSTICK_BUTTON_8},	// NextWeapon;
+    {KEY_JOYSTICK_BUTTON_7}, 	// PreviousWeapon;
     {KEY_VOID},			// FlashbackWeapon;
 	
-    {KEY_VOID},	 		// Cloak;
-    {KEY_VOID},	 		// CycleVisionMode;
-    {KEY_MOUSEWHEELUP},	// ZoomIn;
-    {KEY_MOUSEWHEELDOWN},	// ZoomOut;
-    {KEY_VOID},	 		// GrapplingHook;
-    {KEY_VOID},			// RecallDisk
+    {KEY_JOYSTICK_BUTTON_4}, 	// Cloak;
+    {KEY_JOYSTICK_BUTTON_12}, 	// CycleVisionMode;
+    {KEY_JOYSTICK_BUTTON_14},	// ZoomIn;
+    {KEY_JOYSTICK_BUTTON_16},	// ZoomOut;
+    {KEY_JOYSTICK_BUTTON_6}, 	// GrapplingHook;
+    {KEY_JOYSTICK_BUTTON_13},	// RecallDisk
     {KEY_VOID},			// Taunt
 	
     {KEY_VOID},
@@ -712,17 +712,17 @@ PLAYER_INPUT_CONFIGURATION DefaultAlienInputSecondaryConfig =
 	KEY_NUMPAD2,		// LookDown;
 	KEY_NUMPAD5,		// CentreView;
 
-	KEY_VOID,			// Walk;
-	KEY_VOID, 			// Crouch;
-	KEY_MMOUSE,			// Jump;
+	KEY_JOYSTICK_BUTTON_5,			// Walk;
+	KEY_JOYSTICK_BUTTON_3, 			// Crouch;
+	KEY_JOYSTICK_BUTTON_2,			// Jump;
 
-	KEY_CR,				// Operate;
+	KEY_JOYSTICK_BUTTON_1,			// Operate;
 
-	KEY_NUMPAD0, 		// FirePrimaryWeapon;
-	KEY_NUMPADDEL, 		// FireSecondaryWeapon;
+	KEY_JOYSTICK_BUTTON_10, 		// FirePrimaryWeapon;
+	KEY_JOYSTICK_BUTTON_9, 		// FireSecondaryWeapon;
 	
-    {KEY_VOID}, 		// AlternateVision;
-    {KEY_VOID},	 		// Taunt;
+    {KEY_JOYSTICK_BUTTON_4}, 		// AlternateVision;
+    {KEY_JOYSTICK_BUTTON_12},	 	// Taunt;
     {KEY_VOID},
     {KEY_VOID},
     {KEY_VOID},
@@ -1366,30 +1366,32 @@ void ReadPlayerGameInput(STRATEGYBLOCK* sbPtr)
 
 			if(y2Axis>JOYSTICK_DEAD_ZONE)
 			{
-				y2Axis = -y2Axis;
-				playerStatusPtr->Mvt_InputRequests.Flags.Rqst_LookDown = 1;
+				playerStatusPtr->Mvt_InputRequests.Flags.Rqst_LookUp = 1;
 				playerStatusPtr->Mvt_AnaloguePitching = 1;
-				playerStatusPtr->Mvt_PitchIncrement = y2Axis;
+				playerStatusPtr->Mvt_PitchIncrement = -y2Axis;
 			}
 			else if(y2Axis<-JOYSTICK_DEAD_ZONE)
 			{
-				y2Axis = -y2Axis;
-				playerStatusPtr->Mvt_InputRequests.Flags.Rqst_LookUp = 1;
+				playerStatusPtr->Mvt_InputRequests.Flags.Rqst_LookDown = 1;
 				playerStatusPtr->Mvt_AnaloguePitching = 1;
-				playerStatusPtr->Mvt_PitchIncrement = y2Axis;
+				playerStatusPtr->Mvt_PitchIncrement = -y2Axis;
+			}
+			if(JoystickControlMethods.JoystickFlipVerticalAxis)
+			{
+				playerStatusPtr->Mvt_PitchIncrement = -playerStatusPtr->Mvt_PitchIncrement;
 			}
 
             if(AvP.PlayerType != I_Alien)
             {
                 if(x2Axis>JOYSTICK_DEAD_ZONE)
                 {
-                    playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnLeft = 1;
+                    playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnRight = 1;
                     playerStatusPtr->Mvt_AnalogueTurning = 1;
                     playerStatusPtr->Mvt_TurnIncrement = x2Axis;
                 }
                 else if(x2Axis<-JOYSTICK_DEAD_ZONE)
                 {
-                    playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnRight = 1;
+                    playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnLeft = 1;
                     playerStatusPtr->Mvt_AnalogueTurning = 1;
                     playerStatusPtr->Mvt_TurnIncrement = x2Axis;
                 }

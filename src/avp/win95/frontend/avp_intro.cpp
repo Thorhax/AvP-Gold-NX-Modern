@@ -23,7 +23,7 @@ void Show_ARebellionGame(void);
 void Show_AvPLogo(void);
 extern void ShowSplashScreens(void);
 extern void Show_WinnerScreen(void);
-extern void PlayBinkedFMV(char *filenamePtr);
+#include "bink.h"
 extern void DrawMainMenusBackdrop(void);
 extern void FadedScreen(int alpha);
 
@@ -62,7 +62,7 @@ extern void PlayIntroSequence(void)
 	FlipBuffers();
 	ClearScreenToBlack();
 
-	PlayBinkedFMV("FMVs/logos.bik");
+	PlayBinkedFMV((char *)"FMVs/logos.bik", 127);
 	//PlayFMV("FMVs/rebellion.smk");
 
 	StartMenuMusic();

@@ -118,7 +118,7 @@ template<class T>
 struct List_Member : public List_Member_Base<T>
 {
   T data;
-  List_Member<T>(const T& n) : data(n) {}
+  List_Member(const T& n) : data(n) {}
 };
 
 template<class T>

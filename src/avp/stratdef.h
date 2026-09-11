@@ -263,10 +263,10 @@ extern void GivePlayerCloakAway(void);
 
 // for lift and airlock code
 
-extern void InitPreservedSBs();
-extern void PreserveStBlocksInModule();
-extern BOOL SBNeededForNextEnv();
-extern void	AddPreservedSBsToActiveList();
+extern void InitPreservedSBs(void);
+extern void PreserveStBlocksInModule(MODULE* containing_mod);
+extern BOOL SBNeededForNextEnv(STRATEGYBLOCK* sbptr);
+extern void	AddPreservedSBsToActiveList(void);
 extern void TeleportPreservedSBsToNewEnvModule(MODULE* old_pos_module, MODULE* new_pos, int orient_diff);
 
 

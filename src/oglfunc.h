@@ -9,7 +9,7 @@
 
 #if defined(USE_OPENGL_ES)
 #include "SDL_opengles2.h"
-
+typedef GLclampf GLclampd;
 #else
 #include "SDL_opengl.h"
 #endif
