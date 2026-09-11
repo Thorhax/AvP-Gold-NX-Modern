@@ -49,7 +49,7 @@ ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
 
 DEFINES := -DUSE_OPENGL_ES=1 
 
-CFLAGS	:=	-g -Wall -O3 -ftree-vectorize -ffast-math -funsafe-math-optimizations -ffunction-sections \
+CFLAGS	:=	-g -Wall -O2 -ftree-vectorize -ffunction-sections \
 			$(ARCH) $(DEFINES)
 
 CFLAGS	+=	-D__SWITCH__ $(INCLUDES) `sdl2-config --cflags`
