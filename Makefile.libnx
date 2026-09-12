@@ -6,6 +6,11 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
+TARGET		:=	AvP_Gold
+APP_TITLE	:=	Alien vs. Predator Gold
+APP_VERSION	:=	0.0.3
+APP_AUTHOR	:=	Thorhax
+
 TOPDIR ?= $(CURDIR)
 include $(DEVKITPRO)/libnx/switch_rules
 
@@ -30,7 +35,6 @@ include $(DEVKITPRO)/libnx/switch_rules
 #     - icon.jpg
 #     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
-TARGET		:=	AvP_Gold
 BUILD		:=	build
 SOURCES		:=  source
 DATA		:=	data
@@ -38,9 +42,6 @@ INCLUDES	:=	-Isrc/include -Isrc/avp -Isrc/avp/win95 -Isrc/avp/win95/gadgets -Isr
 EXEFS_SRC	:=	exefs_src
 #ROMFS	:=	romfs
 
-APP_TITLE := Alien vs. Predator Gold
-APP_VERSION := 0.0.3
-APP_AUTHOR := M4xw, (c) 1999-2000 Rebellion
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -354,7 +355,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-all	:	$(OUTPUT).pfs0 $(OUTPUT).nro
+all	:	$(OUTPUT).nacp $(OUTPUT).pfs0 $(OUTPUT).nro
 
 $(OUTPUT).pfs0	:	$(OUTPUT).nso
 
@@ -362,9 +363,17 @@ $(OUTPUT).nso	:	$(OUTPUT).elf
 
 ifeq ($(strip $(NO_NACP)),)
 $(OUTPUT).nro	:	$(OUTPUT).elf $(OUTPUT).nacp
+%.nro		:	%.elf %.nacp
+	@elf2nro $< $@ $(NROFLAGS)
+	@echo built ... $(notdir $@)
 else
 $(OUTPUT).nro	:	$(OUTPUT).elf
 endif
+
+$(OUTPUT).nacp	:
+	@nacptool --create "$(APP_TITLE)" "$(APP_AUTHOR)" "$(APP_VERSION)" $@ $(NACPFLAGS)
+	@echo built ... $(notdir $@)
+
 
 $(OUTPUT).elf	:	$(OFILES)
 
