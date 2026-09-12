@@ -474,6 +474,69 @@ int CloseGameFile(FILE *pfd)
 	return fclose(pfd);
 }
 
+int FindGameFilePath(const char *filename, char *out_path, size_t max_len)
+{
+	char *r;
+	struct stat st;
+
+	if (!filename || !filename[0] || !out_path || max_len == 0)
+		return 0;
+
+	if (global_dir) {
+		r = FixFilename(filename, global_dir, 0);
+		if (r) {
+			if (stat(r, &st) == 0) {
+				strncpy(out_path, r, max_len - 1);
+				out_path[max_len - 1] = 0;
+				free(r);
+				return 1;
+			}
+			free(r);
+		}
+		r = FixFilename(filename, global_dir, 1);
+		if (r) {
+			if (stat(r, &st) == 0) {
+				strncpy(out_path, r, max_len - 1);
+				out_path[max_len - 1] = 0;
+				free(r);
+				return 1;
+			}
+			free(r);
+		}
+	}
+
+	if (local_dir) {
+		r = FixFilename(filename, local_dir, 0);
+		if (r) {
+			if (stat(r, &st) == 0) {
+				strncpy(out_path, r, max_len - 1);
+				out_path[max_len - 1] = 0;
+				free(r);
+				return 1;
+			}
+			free(r);
+		}
+		r = FixFilename(filename, local_dir, 1);
+		if (r) {
+			if (stat(r, &st) == 0) {
+				strncpy(out_path, r, max_len - 1);
+				out_path[max_len - 1] = 0;
+				free(r);
+				return 1;
+			}
+			free(r);
+		}
+	}
+
+	if (stat(filename, &st) == 0) {
+		strncpy(out_path, filename, max_len - 1);
+		out_path[max_len - 1] = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
 
 /*
 Get the filesystem attributes of a file

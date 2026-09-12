@@ -215,6 +215,11 @@ static int LoadUserProfiles(void)
 		}
 
 		profilePtr->FileTime = gdf->timestamp;
+
+		if (profilePtr->MoviesAreActive == 0 && profilePtr->IntroOutroMoviesAreActive == 0) {
+			profilePtr->MoviesAreActive = 1;
+			profilePtr->IntroOutroMoviesAreActive = 1;
+		}
 	
 		InsertProfileIntoList(profilePtr);
 		fclose(rif_file);
@@ -281,6 +286,10 @@ extern void GetSettingsFromUserProfile(void)
 	SmackerSoundVolume =			UserProfilePtr->SmackerSoundVolume;
 	EffectsSoundVolume =			UserProfilePtr->EffectsSoundVolume;
 	CDPlayerVolume = 				UserProfilePtr->CDPlayerVolume;
+	if (UserProfilePtr->MoviesAreActive == 0 && UserProfilePtr->IntroOutroMoviesAreActive == 0) {
+		UserProfilePtr->MoviesAreActive = 1;
+		UserProfilePtr->IntroOutroMoviesAreActive = 1;
+	}
 	MoviesAreActive =				UserProfilePtr->MoviesAreActive;
 	IntroOutroMoviesAreActive =		UserProfilePtr->IntroOutroMoviesAreActive;
 	AutoWeaponChangeOn = 			!UserProfilePtr->AutoWeaponChangeDisabled;

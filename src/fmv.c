@@ -35,7 +35,7 @@ void FindLightingValueFromFMV(unsigned short *bufferPtr);
 void FindLightingValuesFromTriggeredFMV(unsigned char *bufferPtr, FMVTEXTURE *ftPtr);
 
 int SmackerSoundVolume=ONE_FIXED/512;
-int MoviesAreActive;
+int MoviesAreActive=1;
 int IntroOutroMoviesAreActive=1;
 
 int FmvColourRed;

@@ -33,6 +33,7 @@
 #include "opengl.h"
 #include "avp_menus.h"
 #include "avp_mp_config.h"
+#include "bink.h"
 #include "npcsetup.h"
 #include "cdplayer.h"
 #include "hud.h"
@@ -1833,7 +1834,7 @@ int main(int argc, char *argv[])
 	LoadKeyConfiguration();
 	
 	SoundSys_Start();
-	//BinkSys_Init();
+	BinkSys_Init();
 
 	if (WantCDRom) CDDA_Start();
 	
@@ -2081,7 +2082,7 @@ static int MainGame_Deinit(void) {
 	
 	ExitGame();
 
-	//BinkSys_Release();
+	BinkSys_Release();
 	
 	SoundSys_StopAll();
 	
