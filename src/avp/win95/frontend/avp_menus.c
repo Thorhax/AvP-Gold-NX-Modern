@@ -537,6 +537,9 @@ int AvP_MainMenus(void)
 }
 void HandlePostGameFMVs(void)
 {
+	extern int IntroOutroMoviesAreActive;
+	if (!IntroOutroMoviesAreActive) return;
+
 	switch(AvP.PlayerType)
 	{
 		case I_Marine:
@@ -576,6 +579,9 @@ void HandlePostGameFMVs(void)
 }
 void HandlePreGameFMVs(void)
 {
+	extern int IntroOutroMoviesAreActive;
+	if (!IntroOutroMoviesAreActive) return;
+
 	if (AvPMenus.MenusState == MENUSSTATE_STARTGAME && LoadGameRequest == SAVELOAD_REQUEST_NONE)
 	{
 		extern char LevelName[];

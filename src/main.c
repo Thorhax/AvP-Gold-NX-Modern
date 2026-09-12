@@ -1471,7 +1471,7 @@ void CheckForWindowsMessages()
 
 		if(in_menu) { /* In Menus: D-pad and left analog stick navigate */
 			#ifndef JOYSTICK_DEAD_ZONE
-			#define JOYSTICK_DEAD_ZONE 6000
+			#define JOYSTICK_DEAD_ZONE 14000
 			#endif
 			int axes = SDL_JoystickNumAxes(joy);
 			int xPos = 0, yPos = 0;
@@ -1494,44 +1494,36 @@ void CheckForWindowsMessages()
 			int right_pressed = (SDL_JoystickGetButton(joy, 14) || (hat & SDL_HAT_RIGHT) || (xAxis > JOYSTICK_DEAD_ZONE));
 
 			if (up_pressed) {
-				GotAnyKey = 1;
 				if (!KeyboardInput[KEY_UP]) {
 					KeyboardInput[KEY_UP] = 1;
 					DebouncedKeyboardInput[KEY_UP] = 1;
-					DebouncedGotAnyKey = 1;
 				}
 			} else {
 				KeyboardInput[KEY_UP] = 0;
 			}
 
 			if (down_pressed) {
-				GotAnyKey = 1;
 				if (!KeyboardInput[KEY_DOWN]) {
 					KeyboardInput[KEY_DOWN] = 1;
 					DebouncedKeyboardInput[KEY_DOWN] = 1;
-					DebouncedGotAnyKey = 1;
 				}
 			} else {
 				KeyboardInput[KEY_DOWN] = 0;
 			}
 
 			if (left_pressed) {
-				GotAnyKey = 1;
 				if (!KeyboardInput[KEY_LEFT]) {
 					KeyboardInput[KEY_LEFT] = 1;
 					DebouncedKeyboardInput[KEY_LEFT] = 1;
-					DebouncedGotAnyKey = 1;
 				}
 			} else {
 				KeyboardInput[KEY_LEFT] = 0;
 			}
 
 			if (right_pressed) {
-				GotAnyKey = 1;
 				if (!KeyboardInput[KEY_RIGHT]) {
 					KeyboardInput[KEY_RIGHT] = 1;
 					DebouncedKeyboardInput[KEY_RIGHT] = 1;
-					DebouncedGotAnyKey = 1;
 				}
 			} else {
 				KeyboardInput[KEY_RIGHT] = 0;

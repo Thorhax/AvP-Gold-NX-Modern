@@ -9,6 +9,7 @@ extern "C"
 	extern int NormalFrameTime;
 	extern unsigned char GotAnyKey;
 	extern int DebouncedGotAnyKey;
+	extern unsigned char KeyboardInput[];
 	extern SCREENDESCRIPTORBLOCK ScreenDescriptorBlock;
 	extern AVPMENUGFX AvPMenuGfxStorage[];
 extern void DirectReadKeyboard(void);
@@ -47,12 +48,22 @@ void WeWantAnIntro(void)
 
 extern void PlayIntroSequence(void)
 {
+	extern int IntroOutroMoviesAreActive;
+	if (!IntroOutroMoviesAreActive)
+	{
+		StartMenuMusic();
+		return;
+	}
+
 	if (IntroHasAlreadyBeenPlayed)
 	{
 		StartMenuMusic();
 		return;
 	}
 	IntroHasAlreadyBeenPlayed=1;
+
+	GotAnyKey = 0;
+	DebouncedGotAnyKey = 0;
 
 	ResetFrameCounter();
 	Show_CopyrightInfo();
@@ -68,15 +79,15 @@ extern void PlayIntroSequence(void)
 	StartMenuMusic();
 	ResetFrameCounter();
 	
-	Show_Presents();
-	#if ALLOW_SKIP_INTRO
-	if (!GotAnyKey) Show_ARebellionGame();
-	if (!GotAnyKey) Show_AvPLogo();
-	#else
-	Show_ARebellionGame();
-	Show_AvPLogo();
-	#endif
+	if (KeyboardInput[KEY_ESCAPE]) return;
 
+	Show_Presents();
+	if (KeyboardInput[KEY_ESCAPE]) return;
+
+	Show_ARebellionGame();
+	if (KeyboardInput[KEY_ESCAPE]) return;
+
+	Show_AvPLogo();
 }
 extern void ShowSplashScreens(void)
 {
@@ -89,6 +100,8 @@ extern void ShowSplashScreens(void)
 	};
 	for (i=0; i<5; i++)
 	{
+		GotAnyKey = 0;
+		DebouncedGotAnyKey = 0;
 		int timeRemaining = 5*ONE_FIXED;
 		do
 		{
@@ -118,7 +131,9 @@ extern void ShowSplashScreens(void)
 		  	DirectReadKeyboard();	
 			FrameCounterHandler();
 		}
-		while(timeRemaining>=0 && !DebouncedGotAnyKey);
+		while(timeRemaining>=0 && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
+
+		if (KeyboardInput[KEY_ESCAPE]) break;
 	}
 	ClearScreenToBlack();
 	FlipBuffers();
@@ -129,6 +144,8 @@ extern void ShowSplashScreens(void)
 extern void Show_WinnerScreen(void)
 {
 	LoadAvPMenuGfx(AVPMENUGFX_WINNER_SCREEN);
+	GotAnyKey = 0;
+	DebouncedGotAnyKey = 0;
 	
 	int timeRemaining = 10*ONE_FIXED;
 	do
@@ -150,7 +167,7 @@ extern void Show_WinnerScreen(void)
 		FrameCounterHandler();
 		timeRemaining-=NormalFrameTime;
 	}
-	while(timeRemaining>=0 && !DebouncedGotAnyKey);
+	while(timeRemaining>=0 && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
 	ClearScreenToBlack();
 	FlipBuffers();
 	ClearScreenToBlack();
@@ -160,6 +177,9 @@ extern void Show_WinnerScreen(void)
 
 void Show_CopyrightInfo(void)
 {
+	GotAnyKey = 0;
+	DebouncedGotAnyKey = 0;
+
 	int timeRemaining = ONE_FIXED/2;
 	do
 	{
@@ -171,7 +191,8 @@ void Show_CopyrightInfo(void)
 		FrameCounterHandler();
 		timeRemaining-=NormalFrameTime;
 	}
-	while(timeRemaining>0);
+	while(timeRemaining>0 && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
+	if (DebouncedGotAnyKey || KeyboardInput[KEY_ESCAPE]) return;
 	
 	timeRemaining = ONE_FIXED*2;
 	do
@@ -184,7 +205,8 @@ void Show_CopyrightInfo(void)
 		FrameCounterHandler();
 		timeRemaining-=NormalFrameTime;
 	}
-	while(timeRemaining>0);
+	while(timeRemaining>0 && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
+	if (DebouncedGotAnyKey || KeyboardInput[KEY_ESCAPE]) return;
 	
 	timeRemaining = ONE_FIXED/2;
 	do
@@ -197,11 +219,14 @@ void Show_CopyrightInfo(void)
 		FrameCounterHandler();
 		timeRemaining-=NormalFrameTime;
 	}
-	while(timeRemaining>0);
+	while(timeRemaining>0 && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
 }
 
 void Show_Presents(void)
 {
+	GotAnyKey = 0;
+	DebouncedGotAnyKey = 0;
+
 	int timeRemaining = 8*ONE_FIXED-ONE_FIXED/2;
 	do
 	{
@@ -240,14 +265,17 @@ void Show_Presents(void)
 		timeRemaining-=NormalFrameTime;
 	}
 	#if ALLOW_SKIP_INTRO
-	while((timeRemaining>0) && !GotAnyKey);
+	while((timeRemaining>0) && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
 	#else
-	while(timeRemaining>0);// && !GotAnyKey);
+	while(timeRemaining>0);
 	#endif
 }
 
 void Show_ARebellionGame(void)
 {
+	GotAnyKey = 0;
+	DebouncedGotAnyKey = 0;
+
 	int timeRemaining = 7*ONE_FIXED;
 	do
 	{
@@ -285,13 +313,16 @@ void Show_ARebellionGame(void)
 		timeRemaining-=NormalFrameTime;
 	}
 	#if ALLOW_SKIP_INTRO
-	while((timeRemaining>0) && !GotAnyKey);
+	while((timeRemaining>0) && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
 	#else
-	while(timeRemaining>0);// && !GotAnyKey);
+	while(timeRemaining>0);
 	#endif
 }
 void Show_AvPLogo(void)
 {
+	GotAnyKey = 0;
+	DebouncedGotAnyKey = 0;
+
 	int timeRemaining = 5*ONE_FIXED;
 	do
 	{
@@ -323,9 +354,9 @@ void Show_AvPLogo(void)
 		timeRemaining-=NormalFrameTime;
 	}
 	#if ALLOW_SKIP_INTRO
-	while((timeRemaining>0) && !GotAnyKey);
+	while((timeRemaining>0) && !DebouncedGotAnyKey && !KeyboardInput[KEY_ESCAPE]);
 	#else
-	while(timeRemaining>0);// && !GotAnyKey);
+	while(timeRemaining>0);
 	#endif
 }
 

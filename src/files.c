@@ -1024,33 +1024,40 @@ void InitGameDirectories(char *argv0)
 	/* Migrate old 2019 .avp/User_Profiles if present */
 	char old_prf_dir[PATH_MAX];
 	snprintf(old_prf_dir, sizeof(old_prf_dir), "%s/.avp/User_Profiles", localdir);
-	DIR *od = opendir(old_prf_dir);
-	if (od) {
-		char new_prf_dir[PATH_MAX];
-		snprintf(new_prf_dir, sizeof(new_prf_dir), "%s/User_Profiles", localdir);
-		mkdir(new_prf_dir, 0777);
-		struct dirent *de;
-		while ((de = readdir(od)) != NULL) {
-			if (strstr(de->d_name, ".prf") || strstr(de->d_name, ".sav")) {
-				char src_f[PATH_MAX], dst_f[PATH_MAX];
-				snprintf(src_f, sizeof(src_f), "%s/%s", old_prf_dir, de->d_name);
-				snprintf(dst_f, sizeof(dst_f), "%s/%s", new_prf_dir, de->d_name);
-				struct stat st_dst;
-				if (stat(dst_f, &st_dst) != 0) {
-					FILE *in = fopen(src_f, "rb");
-					FILE *out = fopen(dst_f, "wb");
-					if (in && out) {
-						char cbuf[4096];
-						size_t n;
-						while ((n = fread(cbuf, 1, sizeof(cbuf), in)) > 0)
-							fwrite(cbuf, 1, n, out);
+	char mig_flag[PATH_MAX];
+	snprintf(mig_flag, sizeof(mig_flag), "%s/.avp/.migrated", localdir);
+	struct stat st_mig;
+	if (stat(mig_flag, &st_mig) != 0) {
+		DIR *od = opendir(old_prf_dir);
+		if (od) {
+			char new_prf_dir[PATH_MAX];
+			snprintf(new_prf_dir, sizeof(new_prf_dir), "%s/User_Profiles", localdir);
+			mkdir(new_prf_dir, 0777);
+			struct dirent *de;
+			while ((de = readdir(od)) != NULL) {
+				if (strstr(de->d_name, ".prf") || strstr(de->d_name, ".sav")) {
+					char src_f[PATH_MAX], dst_f[PATH_MAX];
+					snprintf(src_f, sizeof(src_f), "%s/%s", old_prf_dir, de->d_name);
+					snprintf(dst_f, sizeof(dst_f), "%s/%s", new_prf_dir, de->d_name);
+					struct stat st_dst;
+					if (stat(dst_f, &st_dst) != 0) {
+						FILE *in = fopen(src_f, "rb");
+						FILE *out = fopen(dst_f, "wb");
+						if (in && out) {
+							char cbuf[4096];
+							size_t n;
+							while ((n = fread(cbuf, 1, sizeof(cbuf), in)) > 0)
+								fwrite(cbuf, 1, n, out);
+						}
+						if (in) fclose(in);
+						if (out) fclose(out);
 					}
-					if (in) fclose(in);
-					if (out) fclose(out);
 				}
 			}
+			closedir(od);
+			FILE *mf = fopen(mig_flag, "w");
+			if (mf) { fputs("migrated", mf); fclose(mf); }
 		}
-		closedir(od);
 	}
 #endif
 
