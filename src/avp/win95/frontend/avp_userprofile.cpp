@@ -280,18 +280,25 @@ extern void GetSettingsFromUserProfile(void)
 	PredatorInputSecondaryConfig = 	UserProfilePtr->PredatorInputSecondaryConfig;
 	AlienInputPrimaryConfig = 		UserProfilePtr->AlienInputPrimaryConfig;
 	AlienInputSecondaryConfig = 	UserProfilePtr->AlienInputSecondaryConfig;
+	if (AlienInputSecondaryConfig.Crouch == KEY_JOYSTICK_BUTTON_3 || AlienInputSecondaryConfig.Crouch == KEY_VOID) {
+		AlienInputSecondaryConfig.Crouch = KEY_JOYSTICK_BUTTON_7;
+		UserProfilePtr->AlienInputSecondaryConfig.Crouch = KEY_JOYSTICK_BUTTON_7;
+	}
 	ControlMethods = 				UserProfilePtr->ControlMethods;
 	JoystickControlMethods = 		UserProfilePtr->JoystickControlMethods;
 	MenuDetailLevelOptions = 		UserProfilePtr->DetailLevelSettings;
 	SmackerSoundVolume =			UserProfilePtr->SmackerSoundVolume;
 	EffectsSoundVolume =			UserProfilePtr->EffectsSoundVolume;
 	CDPlayerVolume = 				UserProfilePtr->CDPlayerVolume;
-	if (UserProfilePtr->MoviesAreActive == 0 && UserProfilePtr->IntroOutroMoviesAreActive == 0) {
-		UserProfilePtr->MoviesAreActive = 1;
-		UserProfilePtr->IntroOutroMoviesAreActive = 1;
+	if (CDPlayerVolume <= 0) {
+		CDPlayerVolume = 127;
+		UserProfilePtr->CDPlayerVolume = 127;
 	}
-	MoviesAreActive =				UserProfilePtr->MoviesAreActive;
-	IntroOutroMoviesAreActive =		UserProfilePtr->IntroOutroMoviesAreActive;
+	UserProfilePtr->MoviesAreActive = 1;
+	UserProfilePtr->IntroOutroMoviesAreActive = 1;
+	MoviesAreActive =				1;
+	IntroOutroMoviesAreActive =		1;
+
 	AutoWeaponChangeOn = 			!UserProfilePtr->AutoWeaponChangeDisabled;
    	strncpy(MP_PlayerName,UserProfilePtr->MultiplayerCallsign,15);
 

@@ -538,7 +538,7 @@ int AvP_MainMenus(void)
 void HandlePostGameFMVs(void)
 {
 	extern int IntroOutroMoviesAreActive;
-	if (!IntroOutroMoviesAreActive) return;
+	IntroOutroMoviesAreActive = 1;
 
 	switch(AvP.PlayerType)
 	{
@@ -580,26 +580,26 @@ void HandlePostGameFMVs(void)
 void HandlePreGameFMVs(void)
 {
 	extern int IntroOutroMoviesAreActive;
-	if (!IntroOutroMoviesAreActive) return;
+	IntroOutroMoviesAreActive = 1;
 
 	if (AvPMenus.MenusState == MENUSSTATE_STARTGAME && LoadGameRequest == SAVELOAD_REQUEST_NONE)
 	{
 		extern char LevelName[];
-		if (!stricmp("derelict", LevelName))
+		if (!stricmp("derelict", LevelName) || (AvP.PlayerType == I_Marine && MarineEpisodeToPlay == 0))
 		{
 			ClearScreenToBlack();
 			FlipBuffers();
 			ClearScreenToBlack();
 			PlayBinkedFMV("FMVs/marineintro.bik", 127);
 		}
-		else if (!stricmp("temple", LevelName))
+		else if (!stricmp("nost03", LevelName) || !stricmp("temple", LevelName) || (AvP.PlayerType == I_Alien && AlienEpisodeToPlay == 0))
 		{
 			ClearScreenToBlack();
 			FlipBuffers();
 			ClearScreenToBlack();
 			PlayBinkedFMV("FMVs/alienintro.bik", 127);
 		}
-		else if (!stricmp("fall", LevelName))
+		else if (!stricmp("fall", LevelName) || (AvP.PlayerType == I_Predator && PredatorEpisodeToPlay == 0))
 		{
 			ClearScreenToBlack();
 			FlipBuffers();

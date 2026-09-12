@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "SDL.h"
 #include <AL/al.h>
@@ -22,11 +25,13 @@
 
 extern int SoundSys_IsOn(void);
 extern float PlatVolumeToGain(int volume);
+extern ALvoid *GetAvpSoundContext(void);
 extern void DrawAvpMenuBink(unsigned char* buf, int width, int height, int pitch);
 extern void FlipBuffers(void);
 extern void ClearScreenToBlack(void);
 extern void CheckForWindowsMessages(void);
 extern void DirectReadKeyboard(void);
+extern void db_logf_fired(const char *fmtStrP, ...);
 
 extern unsigned char GotAnyKey;
 extern int DebouncedGotAnyKey;
@@ -48,21 +53,6 @@ void BinkSys_Release(void)
 	binkInitialized = FALSE;
 }
 
-static int CheckForSkip(void)
-{
-	CheckForWindowsMessages();
-	DirectReadKeyboard();
-
-	if (DebouncedGotAnyKey ||
-	    KeyboardInput[KEY_ESCAPE] || DebouncedKeyboardInput[KEY_ESCAPE] ||
-	    KeyboardInput[KEY_CR] || DebouncedKeyboardInput[KEY_CR] ||
-	    KeyboardInput[KEY_SPACE] || DebouncedKeyboardInput[KEY_SPACE])
-	{
-		return 1;
-	}
-	return 0;
-}
-
 static void ClearAllInputState(void)
 {
 	GotAnyKey = 0;
@@ -75,6 +65,132 @@ static void ClearAllInputState(void)
 	DebouncedKeyboardInput[KEY_SPACE] = 0;
 }
 
+static int CheckForSkip(uint32_t start_ticks, int *button_released)
+{
+	CheckForWindowsMessages();
+	DirectReadKeyboard();
+
+	uint32_t elapsed = SDL_GetTicks() - start_ticks;
+
+	int escape_down = KeyboardInput[KEY_ESCAPE];
+	int cr_down = KeyboardInput[KEY_CR];
+	int space_down = KeyboardInput[KEY_SPACE];
+
+	if (!escape_down && !cr_down && !space_down)
+	{
+		*button_released = 1;
+	}
+
+	// 600ms grace period to avoid instant skip from launch button press
+	if (elapsed < 600)
+	{
+		return 0;
+	}
+
+	if (*button_released)
+	{
+		if (DebouncedKeyboardInput[KEY_ESCAPE] || DebouncedKeyboardInput[KEY_CR] || DebouncedKeyboardInput[KEY_SPACE] ||
+		    escape_down)
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int FindMovieFilePath(const char *filename, char *out_path, size_t max_len)
+{
+	struct stat st;
+
+	if (!filename || !filename[0] || !out_path || max_len == 0)
+		return 0;
+
+	if (FindGameFilePath(filename, out_path, max_len))
+	{
+		if (stat(out_path, &st) == 0)
+		{
+			db_logf_fired("FindMovieFilePath: FindGameFilePath found '%s' -> '%s'\n", filename, out_path);
+			return 1;
+		}
+	}
+
+	const char *slash = strrchr(filename, '/');
+	const char *bslash = strrchr(filename, '\\');
+	const char *fname = filename;
+	if (slash && slash + 1 > fname) fname = slash + 1;
+	if (bslash && bslash + 1 > fname) fname = bslash + 1;
+
+	char base_name[128];
+	strncpy(base_name, fname, sizeof(base_name) - 1);
+	base_name[sizeof(base_name) - 1] = 0;
+	char *dot = strrchr(base_name, '.');
+	if (dot) *dot = 0;
+
+	const char *base_dirs[6];
+	int num_bases = 0;
+	const char *gdir = GetGameGlobalDir();
+	const char *ldir = GetGameLocalDir();
+	if (gdir && gdir[0]) base_dirs[num_bases++] = gdir;
+	if (ldir && ldir[0] && (!gdir || strcmp(gdir, ldir) != 0)) base_dirs[num_bases++] = ldir;
+	base_dirs[num_bases++] = "sdmc:/switch/avpgold";
+	base_dirs[num_bases++] = "sdmc:/switch/avp_gold";
+	base_dirs[num_bases++] = "romfs:";
+	base_dirs[num_bases++] = ".";
+
+	const char *subdirs[] = {
+		"FMVs", "fmvs", "movies", "Movies", "FMV", "fmv", ""
+	};
+	int num_subdirs = sizeof(subdirs) / sizeof(subdirs[0]);
+
+	for (int b = 0; b < num_bases; b++)
+	{
+		for (int s = 0; s < num_subdirs; s++)
+		{
+			char dir_path[PATH_MAX];
+			if (subdirs[s][0] != 0)
+				snprintf(dir_path, sizeof(dir_path), "%s/%s", base_dirs[b], subdirs[s]);
+			else
+				snprintf(dir_path, sizeof(dir_path), "%s", base_dirs[b]);
+
+			DIR *d = opendir(dir_path);
+			if (!d) continue;
+
+			struct dirent *de;
+			while ((de = readdir(d)) != NULL)
+			{
+				if (de->d_name[0] == '.') continue;
+
+				char entry_base[128];
+				strncpy(entry_base, de->d_name, sizeof(entry_base) - 1);
+				entry_base[sizeof(entry_base) - 1] = 0;
+				char *entry_dot = strrchr(entry_base, '.');
+				const char *ext = entry_dot ? entry_dot : "";
+				if (entry_dot) *entry_dot = 0;
+
+				if (strcasecmp(entry_base, base_name) == 0)
+				{
+					if (strcasecmp(ext, ".bik") == 0 || strcasecmp(ext, ".smk") == 0 ||
+					    strcasecmp(ext, ".mp4") == 0 || strcasecmp(ext, ".mkv") == 0)
+					{
+						snprintf(out_path, max_len, "%s/%s", dir_path, de->d_name);
+						if (stat(out_path, &st) == 0)
+						{
+							closedir(d);
+							db_logf_fired("FindMovieFilePath: found '%s' at '%s'\n", filename, out_path);
+							return 1;
+						}
+					}
+				}
+			}
+			closedir(d);
+		}
+	}
+
+	db_logf_fired("FindMovieFilePath: could not locate '%s' (base '%s')\n", filename, base_name);
+	return 0;
+}
+
 void PlayBinkedFMV(char *filenamePtr, int volume)
 {
 	if (!binkInitialized)
@@ -85,25 +201,33 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 	if (!filenamePtr || !filenamePtr[0])
 		return;
 
-	char resolvedPath[PATH_MAX];
-	if (!FindGameFilePath(filenamePtr, resolvedPath, sizeof(resolvedPath)))
+	ALCcontext *alc_ctx = (ALCcontext *)GetAvpSoundContext();
+	if (alc_ctx)
 	{
-		fprintf(stderr, "PlayBinkedFMV: Unable to locate movie file '%s'\n", filenamePtr);
+		alcMakeContextCurrent(alc_ctx);
+	}
+
+	db_logf_fired("PlayBinkedFMV: requested '%s'\n", filenamePtr);
+
+	char resolvedPath[PATH_MAX];
+	if (!FindMovieFilePath(filenamePtr, resolvedPath, sizeof(resolvedPath)))
+	{
+		db_logf_fired("PlayBinkedFMV: Unable to locate movie file '%s'\n", filenamePtr);
 		return;
 	}
 
-	fprintf(stderr, "PlayBinkedFMV: Playing '%s' (resolved path: '%s')\n", filenamePtr, resolvedPath);
+	db_logf_fired("PlayBinkedFMV: Playing '%s' (resolved path: '%s')\n", filenamePtr, resolvedPath);
 
 	AVFormatContext *fmt_ctx = NULL;
 	if (avformat_open_input(&fmt_ctx, resolvedPath, NULL, NULL) < 0)
 	{
-		fprintf(stderr, "PlayBinkedFMV: avformat_open_input failed for '%s'\n", resolvedPath);
+		db_logf_fired("PlayBinkedFMV: avformat_open_input failed for '%s'\n", resolvedPath);
 		return;
 	}
 
 	if (avformat_find_stream_info(fmt_ctx, NULL) < 0)
 	{
-		fprintf(stderr, "PlayBinkedFMV: avformat_find_stream_info failed\n");
+		db_logf_fired("PlayBinkedFMV: avformat_find_stream_info failed\n");
 		avformat_close_input(&fmt_ctx);
 		return;
 	}
@@ -113,10 +237,11 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 
 	if (video_idx < 0 && audio_idx < 0)
 	{
-		fprintf(stderr, "PlayBinkedFMV: No valid video or audio stream in '%s'\n", resolvedPath);
+		db_logf_fired("PlayBinkedFMV: No valid video or audio stream in '%s'\n", resolvedPath);
 		avformat_close_input(&fmt_ctx);
 		return;
 	}
+
 
 	AVCodecContext *v_ctx = NULL;
 	AVCodecContext *a_ctx = NULL;
@@ -242,15 +367,18 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 	int skip_requested = 0;
 	int frame_count = 0;
 	uint32_t start_ticks = SDL_GetTicks();
+	int button_released = 0;
 
 	while (!skip_requested && av_read_frame(fmt_ctx, pkt) >= 0)
 	{
-		if (CheckForSkip())
+		if (CheckForSkip(start_ticks, &button_released))
 		{
+			db_logf_fired("PlayBinkedFMV: skip requested by user\n");
 			skip_requested = 1;
 			av_packet_unref(pkt);
 			break;
 		}
+
 
 		if (pkt->stream_index == audio_idx && has_audio && a_ctx && swr_ctx)
 		{
@@ -346,8 +474,9 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 			{
 				while (avcodec_receive_frame(v_ctx, v_frame) == 0)
 				{
-					if (CheckForSkip())
+					if (CheckForSkip(start_ticks, &button_released))
 					{
+						db_logf_fired("PlayBinkedFMV: skip requested by user\n");
 						skip_requested = 1;
 						av_frame_unref(v_frame);
 						break;
@@ -385,8 +514,9 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 		avcodec_send_packet(v_ctx, NULL);
 		while (avcodec_receive_frame(v_ctx, v_frame) == 0 && !skip_requested)
 		{
-			if (CheckForSkip())
+			if (CheckForSkip(start_ticks, &button_released))
 			{
+				db_logf_fired("PlayBinkedFMV: skip requested by user\n");
 				skip_requested = 1;
 				av_frame_unref(v_frame);
 				break;
@@ -422,7 +552,7 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 		alGetSourcei(alSource, AL_SOURCE_STATE, &state);
 		while (state == AL_PLAYING && (SDL_GetTicks() - drain_start < 1500))
 		{
-			if (CheckForSkip()) break;
+			if (CheckForSkip(start_ticks, &button_released)) break;
 			SDL_Delay(20);
 			alGetSourcei(alSource, AL_SOURCE_STATE, &state);
 		}
@@ -476,6 +606,9 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 	FlipBuffers();
 
 	ClearAllInputState();
+	CheckForWindowsMessages();
+	db_logf_fired("PlayBinkedFMV: completed '%s' (frames=%d, skipped=%d)\n", filenamePtr, frame_count, skip_requested);
+
 }
 
 void StartMenuBackgroundBink(void)

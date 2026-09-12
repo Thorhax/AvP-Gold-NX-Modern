@@ -39,6 +39,8 @@ GameDirectoryFile *ScanGameDirectory(void *dir);
 int CloseGameDirectory(void *dir);
 void InitGameDirectories(char *argv0);
 int FindGameFilePath(const char *filename, char *out_path, size_t max_len);
+const char *GetGameGlobalDir(void);
+const char *GetGameLocalDir(void);
 
 #ifdef __cplusplus
 };

@@ -49,11 +49,7 @@ void WeWantAnIntro(void)
 extern void PlayIntroSequence(void)
 {
 	extern int IntroOutroMoviesAreActive;
-	if (!IntroOutroMoviesAreActive)
-	{
-		StartMenuMusic();
-		return;
-	}
+	IntroOutroMoviesAreActive = 1;
 
 	if (IntroHasAlreadyBeenPlayed)
 	{

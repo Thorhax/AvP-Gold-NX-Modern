@@ -537,6 +537,17 @@ int FindGameFilePath(const char *filename, char *out_path, size_t max_len)
 	return 0;
 }
 
+const char *GetGameGlobalDir(void)
+{
+	return global_dir;
+}
+
+const char *GetGameLocalDir(void)
+{
+	return local_dir;
+}
+
+
 
 /*
 Get the filesystem attributes of a file

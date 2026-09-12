@@ -713,8 +713,9 @@ PLAYER_INPUT_CONFIGURATION DefaultAlienInputSecondaryConfig =
 	KEY_NUMPAD5,		// CentreView;
 
 	KEY_JOYSTICK_BUTTON_5,			// Walk;
-	KEY_JOYSTICK_BUTTON_3, 			// Crouch;
+	KEY_JOYSTICK_BUTTON_7, 			// Crouch (Alien Climb / Wall-crawl on L button);
 	KEY_JOYSTICK_BUTTON_2,			// Jump;
+
 
 	KEY_JOYSTICK_BUTTON_1,			// Operate;
 
@@ -930,6 +931,13 @@ void ReadPlayerGameInput(STRATEGYBLOCK* sbPtr)
 		if(KeyboardInput[primaryInput->Crouch]
 		 ||KeyboardInput[secondaryInput->Crouch])
 			playerStatusPtr->Mvt_InputRequests.Flags.Rqst_Crouch = 1;
+
+		if (AvP.PlayerType == I_Alien)
+		{
+			/* Alien climb / wall-crawl on Switch L button (KEY_JOYSTICK_BUTTON_7) */
+			if (KeyboardInput[KEY_JOYSTICK_BUTTON_7] || KeyboardInput[KEY_JOYSTICK_BUTTON_3])
+				playerStatusPtr->Mvt_InputRequests.Flags.Rqst_Crouch = 1;
+		}
 		
 		if(KeyboardInput[primaryInput->Jump]
 		 ||KeyboardInput[secondaryInput->Jump])

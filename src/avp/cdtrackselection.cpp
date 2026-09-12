@@ -107,6 +107,50 @@ static void ExtractTracksForLevel(char* & buffer,List<int> & track_list)
 	
 }
 
+static void SetDefaultCDTrackList()
+{
+	// Multiplayer / default tracks
+	for(int t=1; t<=5; t++) MultiplayerCDTracks[0].add_entry(t); // Marine
+	for(int t=6; t<=10; t++) MultiplayerCDTracks[1].add_entry(t); // Predator
+	for(int t=11; t<=15; t++) MultiplayerCDTracks[2].add_entry(t); // Alien
+
+	// Marine levels
+	int m_tracks[5][5] = {
+		{1,2,3,4,5},
+		{2,3,4,5,1},
+		{3,4,5,1,2},
+		{4,5,1,2,3},
+		{5,1,2,3,4}
+	};
+	for(int i=0; i<5; i++) {
+		for(int t=0; t<5; t++) LevelCDTracks[AVP_ENVIRONMENT_DERELICT + i].add_entry(m_tracks[i][t]);
+	}
+
+	// Predator levels
+	int p_tracks[5][5] = {
+		{6,7,8,9,10},
+		{7,8,9,10,6},
+		{8,9,10,6,7},
+		{9,10,6,7,8},
+		{10,6,7,8,9}
+	};
+	for(int i=0; i<5; i++) {
+		for(int t=0; t<5; t++) LevelCDTracks[AVP_ENVIRONMENT_WATERFALL + i].add_entry(p_tracks[i][t]);
+	}
+
+	// Alien levels
+	int a_tracks[5][5] = {
+		{11,12,13,14,15},
+		{12,13,14,15,11},
+		{13,14,15,11,12},
+		{14,15,11,12,13},
+		{15,11,12,13,14}
+	};
+	for(int i=0; i<5; i++) {
+		for(int t=0; t<5; t++) LevelCDTracks[AVP_ENVIRONMENT_FERARCO + i].add_entry(a_tracks[i][t]);
+	}
+}
+
 void LoadCDTrackList()
 {
 	//clear out the old list first
@@ -116,7 +160,8 @@ void LoadCDTrackList()
 	
 	if(file==NULL)
 	{
-		LOGDXFMT(("Failed to open %s",CDTrackFileName));
+		LOGDXFMT(("Failed to open %s, using defaults",CDTrackFileName));
+		SetDefaultCDTrackList();
 		return;
 	}
 
@@ -148,8 +193,11 @@ void LoadCDTrackList()
 		ExtractTracksForLevel(bufferptr,LevelCDTracks[i]);
 	}
 	
-
 	delete [] buffer;
+
+	if (MultiplayerCDTracks[0].size() == 0) {
+		SetDefaultCDTrackList();
+	}
 }
 
 static unsigned int TrackSelectCounter=0;

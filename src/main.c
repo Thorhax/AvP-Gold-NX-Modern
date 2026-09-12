@@ -125,8 +125,9 @@ static int WantMouseGrab = 0;
 
 // Additional configuration
 int WantSound = 1;
-static int WantCDRom = 0;
+static int WantCDRom = 1;
 static int WantJoystick = 1;
+
 
 static GLuint FullscreenTexture;
 static GLsizei FullscreenTextureWidth;

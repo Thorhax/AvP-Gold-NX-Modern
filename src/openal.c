@@ -1243,4 +1243,10 @@ float PlatVolumeToGain(int volume)
        return vol_to_gain_table[volume];
 }
 
+ALvoid *GetAvpSoundContext(void)
+{
+       return AvpSoundContext;
+}
+
+
 
