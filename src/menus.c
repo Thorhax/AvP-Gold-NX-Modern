@@ -384,11 +384,16 @@ int LengthOfMenuText(const char *textPtr)
 int LengthOfSmallMenuText(char *textPtr)
 {
 	int width = 0;
+	extern int HUDScaleFactor;
+	extern int InGameMenusAreRunning(void);
 	
 	while (textPtr && *textPtr) {
 		width += AAFontWidths[(unsigned char) *textPtr];
 		
 		textPtr++;
+	}
+	if (InGameMenusAreRunning() && HUDScaleFactor > ONE_FIXED) {
+		width = MUL_FIXED(HUDScaleFactor, width);
 	}
 	return width;
 }

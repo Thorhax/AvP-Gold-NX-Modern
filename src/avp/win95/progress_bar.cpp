@@ -79,6 +79,12 @@ void Start_Progress_Bar()
 	LoadingBarEmpty = NULL;
 	LoadingBarFull = NULL;
 
+	{
+		extern int HUDScaleFactor;
+		HUDScaleFactor = DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640);
+		if (HUDScaleFactor < ONE_FIXED) HUDScaleFactor = ONE_FIXED;
+	}
+
 	AAFontImageNumber = CL_LoadImageOnce("Common\\aa_font.RIM",LIO_D3DTEXTURE|LIO_RELATIVEPATH|LIO_RESTORABLE);
 
 	/* load other graphics */

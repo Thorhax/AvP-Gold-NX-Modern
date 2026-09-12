@@ -2325,16 +2325,18 @@ void D3D_RenderHUDNumber_Centred(unsigned int number,int x,int y,int colour)
 void D3D_RenderHUDString(char *stringPtr,int x,int y,int colour)
 {
 	struct VertexTag quadVertices[4];
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
 	if (stringPtr == NULL)
 	{
 		return;
 	}
 
-	quadVertices[0].Y = y-1;
-	quadVertices[1].Y = y-1;
-	quadVertices[2].Y = y + HUD_FONT_HEIGHT + 1;
-	quadVertices[3].Y = y + HUD_FONT_HEIGHT + 1;
+	quadVertices[0].Y = y - MUL_FIXED(scaleFactor, 1);
+	quadVertices[1].Y = y - MUL_FIXED(scaleFactor, 1);
+	quadVertices[2].Y = y + MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 1);
+	quadVertices[3].Y = y + MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 1);
 	
 	CheckFilteringModeIsCorrect(FILTERING_BILINEAR_OFF);
 
@@ -2355,10 +2357,10 @@ void D3D_RenderHUDString(char *stringPtr,int x,int y,int colour)
 			quadVertices[3].U = topLeftU - 1;
 			quadVertices[3].V = topLeftV + HUD_FONT_HEIGHT + 1;
 			
-			quadVertices[0].X = x - 1;
-			quadVertices[3].X = x - 1;
-			quadVertices[1].X = x + HUD_FONT_WIDTH + 1;
-			quadVertices[2].X = x + HUD_FONT_WIDTH + 1;
+			quadVertices[0].X = x - MUL_FIXED(scaleFactor, 1);
+			quadVertices[3].X = x - MUL_FIXED(scaleFactor, 1);
+			quadVertices[1].X = x + MUL_FIXED(scaleFactor, HUD_FONT_WIDTH + 1);
+			quadVertices[2].X = x + MUL_FIXED(scaleFactor, HUD_FONT_WIDTH + 1);
 				
 			D3D_HUDQuad_Output
 			(
@@ -2367,15 +2369,16 @@ void D3D_RenderHUDString(char *stringPtr,int x,int y,int colour)
 				colour
 			);
 		}
-		x += AAFontWidths[(unsigned char)c];
+		x += MUL_FIXED(scaleFactor, AAFontWidths[(unsigned char)c]);
 	}
 }
 
 void D3D_RenderHUDString_Clipped(char *stringPtr,int x,int y,int colour)
 {
 	struct VertexTag quadVertices[4];
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
-// 	LOCALASSERT(y<=0);
 	if (stringPtr == NULL)
 	{
 		return;
@@ -2383,8 +2386,8 @@ void D3D_RenderHUDString_Clipped(char *stringPtr,int x,int y,int colour)
 
 	CheckFilteringModeIsCorrect(FILTERING_BILINEAR_OFF);
 
-	quadVertices[2].Y = y + HUD_FONT_HEIGHT + 1;
-	quadVertices[3].Y = y + HUD_FONT_HEIGHT + 1;
+	quadVertices[2].Y = y + MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 1);
+	quadVertices[3].Y = y + MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 1);
 	
 	quadVertices[0].Y = 0;
 	quadVertices[1].Y = 0;
@@ -2406,10 +2409,10 @@ void D3D_RenderHUDString_Clipped(char *stringPtr,int x,int y,int colour)
 			quadVertices[3].U = topLeftU - 1;
 			quadVertices[3].V = topLeftV + HUD_FONT_HEIGHT+1;
 			
-			quadVertices[0].X = x - 1;
-			quadVertices[3].X = x - 1;
-			quadVertices[1].X = x + HUD_FONT_WIDTH + 1;
-			quadVertices[2].X = x + HUD_FONT_WIDTH + 1;
+			quadVertices[0].X = x - MUL_FIXED(scaleFactor, 1);
+			quadVertices[3].X = x - MUL_FIXED(scaleFactor, 1);
+			quadVertices[1].X = x + MUL_FIXED(scaleFactor, HUD_FONT_WIDTH + 1);
+			quadVertices[2].X = x + MUL_FIXED(scaleFactor, HUD_FONT_WIDTH + 1);
 				
 			D3D_HUDQuad_Output
 			(
@@ -2418,7 +2421,7 @@ void D3D_RenderHUDString_Clipped(char *stringPtr,int x,int y,int colour)
 				colour
 			);
 		}
-		x += AAFontWidths[(unsigned char)c];
+		x += MUL_FIXED(scaleFactor, AAFontWidths[(unsigned char)c]);
 	}
 }
 
@@ -2490,11 +2493,14 @@ void RenderStringCentred(char *stringPtr, int centreX, int y, int colour)
 {
 	int length = 0;
 	char *ptr = stringPtr;
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
 	while(*ptr)
 	{
 		length+=AAFontWidths[(unsigned char)*ptr++];
 	}
+	length = MUL_FIXED(scaleFactor, length);
 	D3D_RenderHUDString(stringPtr,centreX-length/2,y,colour);
 }
 
@@ -2544,6 +2550,9 @@ void RenderStringVertically(char *stringPtr, int centreX, int bottomY, int colou
 
 int Hardware_RenderSmallMenuText(char *textPtr, int x, int y, int alpha, enum AVPMENUFORMAT_ID format) 
 {
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+
 	switch(format)
 	{
 		default:
@@ -2565,7 +2574,7 @@ int Hardware_RenderSmallMenuText(char *textPtr, int x, int y, int alpha, enum AV
 				length+=AAFontWidths[(unsigned char) *ptr++];
 			}
 
-			x -= length;
+			x -= MUL_FIXED(scaleFactor, length);
 			break;
 		}
 		case AVPMENUFORMAT_CENTREJUSTIFIED:
@@ -2578,7 +2587,7 @@ int Hardware_RenderSmallMenuText(char *textPtr, int x, int y, int alpha, enum AV
 				length+=AAFontWidths[(unsigned char) *ptr++];
 			}
 
-			x -= length/2;
+			x -= MUL_FIXED(scaleFactor, length)/2;
 			break;
 		}	
 	}
@@ -2596,6 +2605,9 @@ int Hardware_RenderSmallMenuText(char *textPtr, int x, int y, int alpha, enum AV
 
 int Hardware_RenderSmallMenuText_Coloured(char *textPtr, int x, int y, int alpha, enum AVPMENUFORMAT_ID format, int red, int green, int blue)
 {
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+
 	switch(format)
 	{
 		default:
@@ -2617,7 +2629,7 @@ int Hardware_RenderSmallMenuText_Coloured(char *textPtr, int x, int y, int alpha
 				length+=AAFontWidths[(unsigned char) *ptr++];
 			}
 
-			x -= length;
+			x -= MUL_FIXED(scaleFactor, length);
 			break;
 		}
 		case AVPMENUFORMAT_CENTREJUSTIFIED:
@@ -2630,7 +2642,7 @@ int Hardware_RenderSmallMenuText_Coloured(char *textPtr, int x, int y, int alpha
 				length+=AAFontWidths[(unsigned char) *ptr++];
 			}
 
-			x -= length/2;
+			x -= MUL_FIXED(scaleFactor, length)/2;
 			break;
 		}	
 	}
@@ -2663,7 +2675,12 @@ void Hardware_RenderHighlightRectangle(int x1,int y1,int x2,int y2,int r, int g,
 void D3D_DrawSliderBar(int x, int y, int alpha)
 {
 	struct VertexTag quadVertices[4];
-	int sliderHeight = 11;
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+	int sliderHeight = MUL_FIXED(scaleFactor, 11);
+	int capWidth = MUL_FIXED(scaleFactor, 2);
+	int borderWidth = MUL_FIXED(scaleFactor, 2);
+	int barWidth = MUL_FIXED(scaleFactor, 217);
 	unsigned int colour = alpha>>8;
 
 	if (colour>255) colour = 255;
@@ -2684,14 +2701,14 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 		quadVertices[1].U = topLeftU + 2;
 		quadVertices[1].V = topLeftV;
 		quadVertices[2].U = topLeftU + 2;
-		quadVertices[2].V = topLeftV + sliderHeight;
+		quadVertices[2].V = topLeftV + 11;
 		quadVertices[3].U = topLeftU;
-		quadVertices[3].V = topLeftV + sliderHeight;
+		quadVertices[3].V = topLeftV + 11;
 		
 		quadVertices[0].X = x;
 		quadVertices[3].X = x;
-		quadVertices[1].X = x + 2;
-		quadVertices[2].X = x + 2;
+		quadVertices[1].X = x + capWidth;
+		quadVertices[2].X = x + capWidth;
 			
 		D3D_HUDQuad_Output
 		(
@@ -2709,14 +2726,14 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 		quadVertices[1].U = topLeftU + 2;
 		quadVertices[1].V = topLeftV;
 		quadVertices[2].U = topLeftU + 2;
-		quadVertices[2].V = topLeftV + sliderHeight;
+		quadVertices[2].V = topLeftV + 11;
 		quadVertices[3].U = topLeftU;
-		quadVertices[3].V = topLeftV + sliderHeight;
+		quadVertices[3].V = topLeftV + 11;
 		
-		quadVertices[0].X = x+213+2;
-		quadVertices[3].X = x+213+2;
-		quadVertices[1].X = x+2 +213+2;
-		quadVertices[2].X = x+2 +213+2;
+		quadVertices[0].X = x + barWidth - capWidth;
+		quadVertices[3].X = x + barWidth - capWidth;
+		quadVertices[1].X = x + barWidth;
+		quadVertices[2].X = x + barWidth;
 			
 		D3D_HUDQuad_Output
 		(
@@ -2725,8 +2742,8 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 			colour
 		);
 	}
-	quadVertices[2].Y = y + 2;
-	quadVertices[3].Y = y + 2;
+	quadVertices[2].Y = y + borderWidth;
+	quadVertices[3].Y = y + borderWidth;
 
 	{
 		int topLeftU = 5;
@@ -2741,10 +2758,10 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 		quadVertices[3].U = topLeftU;
 		quadVertices[3].V = topLeftV + 2;
 		
-		quadVertices[0].X = x + 2;
-		quadVertices[3].X = x + 2;
-		quadVertices[1].X = x + 215;
-		quadVertices[2].X = x + 215;
+		quadVertices[0].X = x + capWidth;
+		quadVertices[3].X = x + capWidth;
+		quadVertices[1].X = x + barWidth - capWidth;
+		quadVertices[2].X = x + barWidth - capWidth;
 			
 		D3D_HUDQuad_Output
 		(
@@ -2753,10 +2770,10 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 			colour
 		);
 	}
-	quadVertices[0].Y = y + 9;
-	quadVertices[1].Y = y + 9;
-	quadVertices[2].Y = y + 11;
-	quadVertices[3].Y = y + 11;
+	quadVertices[0].Y = y + sliderHeight - borderWidth;
+	quadVertices[1].Y = y + sliderHeight - borderWidth;
+	quadVertices[2].Y = y + sliderHeight;
+	quadVertices[3].Y = y + sliderHeight;
 
 	{
 		int topLeftU = 5;
@@ -2771,10 +2788,10 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 		quadVertices[3].U = topLeftU;
 		quadVertices[3].V = topLeftV + 2;
 		
-		quadVertices[0].X = x + 2;
-		quadVertices[3].X = x + 2;
-		quadVertices[1].X = x + 215;
-		quadVertices[2].X = x + 215;
+		quadVertices[0].X = x + capWidth;
+		quadVertices[3].X = x + capWidth;
+		quadVertices[1].X = x + barWidth - capWidth;
+		quadVertices[2].X = x + barWidth - capWidth;
 			
 		D3D_HUDQuad_Output
 		(
@@ -2788,7 +2805,10 @@ void D3D_DrawSliderBar(int x, int y, int alpha)
 void D3D_DrawSlider(int x, int y, int alpha)
 {
 	struct VertexTag quadVertices[4];
-	int sliderHeight = 5;
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+	int sliderHeight = MUL_FIXED(scaleFactor, 5);
+	int sliderWidth = MUL_FIXED(scaleFactor, 9);
 	unsigned int colour = alpha>>8;
 
 	if (colour>255) colour = 255;
@@ -2809,14 +2829,14 @@ void D3D_DrawSlider(int x, int y, int alpha)
 		quadVertices[1].U = topLeftU + 9;
 		quadVertices[1].V = topLeftV;
 		quadVertices[2].U = topLeftU + 9;
-		quadVertices[2].V = topLeftV + sliderHeight;
+		quadVertices[2].V = topLeftV + 5;
 		quadVertices[3].U = topLeftU;
-		quadVertices[3].V = topLeftV + sliderHeight;
+		quadVertices[3].V = topLeftV + 5;
 		
 		quadVertices[0].X = x;
 		quadVertices[3].X = x;
-		quadVertices[1].X = x + 9;
-		quadVertices[2].X = x + 9;
+		quadVertices[1].X = x + sliderWidth;
+		quadVertices[2].X = x + sliderWidth;
 			
 		D3D_HUDQuad_Output
 		(

@@ -1381,20 +1381,17 @@ void ReadPlayerGameInput(STRATEGYBLOCK* sbPtr)
 				playerStatusPtr->Mvt_PitchIncrement = -playerStatusPtr->Mvt_PitchIncrement;
 			}
 
-            if(AvP.PlayerType != I_Alien)
+            if(x2Axis>JOYSTICK_DEAD_ZONE)
             {
-                if(x2Axis>JOYSTICK_DEAD_ZONE)
-                {
-                    playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnRight = 1;
-                    playerStatusPtr->Mvt_AnalogueTurning = 1;
-                    playerStatusPtr->Mvt_TurnIncrement = x2Axis;
-                }
-                else if(x2Axis<-JOYSTICK_DEAD_ZONE)
-                {
-                    playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnLeft = 1;
-                    playerStatusPtr->Mvt_AnalogueTurning = 1;
-                    playerStatusPtr->Mvt_TurnIncrement = x2Axis;
-                }
+                playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnRight = 1;
+                playerStatusPtr->Mvt_AnalogueTurning = 1;
+                playerStatusPtr->Mvt_TurnIncrement = x2Axis;
+            }
+            else if(x2Axis<-JOYSTICK_DEAD_ZONE)
+            {
+                playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnLeft = 1;
+                playerStatusPtr->Mvt_AnalogueTurning = 1;
+                playerStatusPtr->Mvt_TurnIncrement = x2Axis;
             }
 		}
 		
@@ -1414,33 +1411,16 @@ void ReadPlayerGameInput(STRATEGYBLOCK* sbPtr)
 			}
 		}
 
-        if (AvP.PlayerType == I_Alien)
+        // strafing
+        if(xAxis<-JOYSTICK_DEAD_ZONE)
         {
-            if(xAxis<-JOYSTICK_DEAD_ZONE)
-            {
-                playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnLeft = 1;
-                playerStatusPtr->Mvt_AnalogueTurning = 1;
-                playerStatusPtr->Mvt_TurnIncrement = xAxis;
-            }
-            else if(xAxis>JOYSTICK_DEAD_ZONE)
-            {			  
-                playerStatusPtr->Mvt_InputRequests.Flags.Rqst_TurnRight = 1;
-                playerStatusPtr->Mvt_AnalogueTurning = 1;
-                playerStatusPtr->Mvt_TurnIncrement = xAxis;
-            }
+            playerStatusPtr->Mvt_InputRequests.Flags.Rqst_SideStepLeft = 1;
+            playerStatusPtr->Mvt_SideStepIncrement = xAxis;
         }
-        else // strafing
-        {
-            if(xAxis<-JOYSTICK_DEAD_ZONE)
-            {
-                playerStatusPtr->Mvt_InputRequests.Flags.Rqst_SideStepLeft = 1;
-                playerStatusPtr->Mvt_SideStepIncrement = xAxis;
-            }
-            else if(xAxis>JOYSTICK_DEAD_ZONE)
-            {			  
-                playerStatusPtr->Mvt_InputRequests.Flags.Rqst_SideStepRight = 1;
-                playerStatusPtr->Mvt_SideStepIncrement = xAxis;
-            }
+        else if(xAxis>JOYSTICK_DEAD_ZONE)
+        {			  
+            playerStatusPtr->Mvt_InputRequests.Flags.Rqst_SideStepRight = 1;
+            playerStatusPtr->Mvt_SideStepIncrement = xAxis;
         }
         
 

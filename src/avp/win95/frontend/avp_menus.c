@@ -1984,7 +1984,10 @@ static void RenderLoadGameMenu(void)
 		{
 			if(AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
 			{
-				Hardware_RenderHighlightRectangle(MENU_LEFTXEDGE,y-2,MENU_RIGHTXEDGE,y+4+HUD_FONT_HEIGHT*2,0,128,0);
+				extern int HUDScaleFactor;
+				int hBox = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4 + HUD_FONT_HEIGHT * 2) : 4 + HUD_FONT_HEIGHT * 2;
+				int yOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 2) : 2;
+				Hardware_RenderHighlightRectangle(MENU_LEFTXEDGE, y - yOffset, MENU_RIGHTXEDGE, y + hBox, 0, 128, 0);
 			}
 			else
 			{
@@ -2057,12 +2060,17 @@ static void RenderLoadGameMenu(void)
 				RenderText(buffer,MENU_RIGHTXEDGE-30,y,elementPtr->Brightness,AVPMENUFORMAT_RIGHTJUSTIFIED);
 			}
 
-			sprintf(buffer, "%s %02d:%02d:%02d",GetTextString(TEXTSTRING_GAMESTATS_TIMEELAPSED),slotPtr->ElapsedTime_Hours,slotPtr->ElapsedTime_Minutes,slotPtr->ElapsedTime_Seconds);
-			RenderText(buffer,MENU_LEFTXEDGE+30,y+HUD_FONT_HEIGHT+1,elementPtr->Brightness,AVPMENUFORMAT_LEFTJUSTIFIED);
+			{
+				extern int HUDScaleFactor;
+				int font_h = (AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS && HUDScaleFactor > ONE_FIXED) ?
+					MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT) : HUD_FONT_HEIGHT;
+				sprintf(buffer, "%s %02d:%02d:%02d",GetTextString(TEXTSTRING_GAMESTATS_TIMEELAPSED),slotPtr->ElapsedTime_Hours,slotPtr->ElapsedTime_Minutes,slotPtr->ElapsedTime_Seconds);
+				RenderText(buffer,MENU_LEFTXEDGE+30,y+font_h+1,elementPtr->Brightness,AVPMENUFORMAT_LEFTJUSTIFIED);
 
-			sprintf(buffer, "%s: %d",GetTextString(TEXTSTRING_SAVEGAME_SAVESLEFT),slotPtr->SavesLeft);
-			RenderText(buffer,MENU_CENTREX,y+HUD_FONT_HEIGHT+1,elementPtr->Brightness,AVPMENUFORMAT_CENTREJUSTIFIED);
-			RenderText(ctime(&slotPtr->TimeStamp),MENU_RIGHTXEDGE-30,y+HUD_FONT_HEIGHT+1,elementPtr->Brightness,AVPMENUFORMAT_RIGHTJUSTIFIED);
+				sprintf(buffer, "%s: %d",GetTextString(TEXTSTRING_SAVEGAME_SAVESLEFT),slotPtr->SavesLeft);
+				RenderText(buffer,MENU_CENTREX,y+font_h+1,elementPtr->Brightness,AVPMENUFORMAT_CENTREJUSTIFIED);
+				RenderText(ctime(&slotPtr->TimeStamp),MENU_RIGHTXEDGE-30,y+font_h+1,elementPtr->Brightness,AVPMENUFORMAT_RIGHTJUSTIFIED);
+			}
 		}
 		else
 		{
@@ -2083,9 +2091,12 @@ static void RenderLoadGameMenu(void)
 	{
 		char *textPtr = GetTextString(AvPMenusData[AvPMenus.CurrentMenu].MenuTitle);
 		AVPMENU_ELEMENT *elementPtr = &AvPMenus.MenuElements[AvPMenus.CurrentlySelectedElement];
-		y = (ScreenDescriptorBlock.SDB_Height - AvPMenus.MenuHeight)/2 - 30;
+		extern int HUDScaleFactor;
+		int titleOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 30) : 30;
+		int helpOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 20) : 20;
+		y = (ScreenDescriptorBlock.SDB_Height - AvPMenus.MenuHeight)/2 - titleOffset;
 		RenderText(textPtr,MENU_CENTREX,y,ONE_FIXED,AVPMENUFORMAT_CENTREJUSTIFIED);
-		y = (ScreenDescriptorBlock.SDB_Height + AvPMenus.MenuHeight)/2 + 20;
+		y = (ScreenDescriptorBlock.SDB_Height + AvPMenus.MenuHeight)/2 + helpOffset;
 		RenderText(GetTextString(elementPtr->HelpString),MENU_CENTREX,y,ONE_FIXED,AVPMENUFORMAT_CENTREJUSTIFIED);
 	}
 }
@@ -3785,13 +3796,20 @@ static void RenderMenuElement(AVPMENU_ELEMENT *elementPtr, int e, int y)
 		}
 		case AVPMENU_ELEMENT_SLIDER:
 		{
-			int x = MENU_CENTREX+MENU_ELEMENT_SPACING+3;
-			x+=(201*(*elementPtr->c.SliderValuePtr))/elementPtr->b.MaxSliderValue;
-			RenderText(GetTextString(elementPtr->a.TextDescription),MENU_CENTREX-MENU_ELEMENT_SPACING,y,elementPtr->Brightness,AVPMENUFORMAT_RIGHTJUSTIFIED);
+			extern int HUDScaleFactor;
+			int spacing = (AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS && HUDScaleFactor > ONE_FIXED) ?
+				MUL_FIXED(HUDScaleFactor, MENU_ELEMENT_SPACING) : MENU_ELEMENT_SPACING;
+			int barTravel = (AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS && HUDScaleFactor > ONE_FIXED) ?
+				MUL_FIXED(HUDScaleFactor, 201) : 201;
+			int x = MENU_CENTREX + spacing + ((AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS && HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 3) : 3);
+			x += (barTravel * (*elementPtr->c.SliderValuePtr)) / elementPtr->b.MaxSliderValue;
+			RenderText(GetTextString(elementPtr->a.TextDescription), MENU_CENTREX - spacing, y, elementPtr->Brightness, AVPMENUFORMAT_RIGHTJUSTIFIED);
 			if(AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
 			{
-				D3D_DrawSliderBar(MENU_CENTREX+MENU_ELEMENT_SPACING,y+1,elementPtr->Brightness);
-				D3D_DrawSlider(x,y+4,elementPtr->Brightness);
+				int yOffset1 = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 1) : 1;
+				int yOffset4 = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4) : 4;
+				D3D_DrawSliderBar(MENU_CENTREX + spacing, y + yOffset1, elementPtr->Brightness);
+				D3D_DrawSlider(x, y + yOffset4, elementPtr->Brightness);
 			}
 			else
 			{
@@ -3856,7 +3874,12 @@ static void RenderMenuElement(AVPMENU_ELEMENT *elementPtr, int e, int y)
 
 				if(AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
 				{
-					Hardware_RenderHighlightRectangle(x-100,y-4,x+4,y+19,0,g,0);
+					extern int HUDScaleFactor;
+					int xBox = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 100) : 100;
+					int xPad = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4) : 4;
+					int yPad = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4) : 4;
+					int yH = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 19) : 19;
+					Hardware_RenderHighlightRectangle(x - xBox, y - yPad, x + xPad, y + yH, 0, g, 0);
 				}
 				else
 				{
@@ -4025,6 +4048,14 @@ static int HeightOfMenuElement(AVPMENU_ELEMENT *elementPtr)
 			break;
 		}
 #endif
+	}
+	if (AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
+	{
+		extern int HUDScaleFactor;
+		if (HUDScaleFactor > ONE_FIXED)
+		{
+			h = MUL_FIXED(HUDScaleFactor, h);
+		}
 	}
 	return h;
 }
@@ -5469,6 +5500,13 @@ void RenderBriefingText(int centreY, int brightness)
 {
 	int lengthOfLongestLine=-1;
 	int x,y,i;
+	int font_height = HUD_FONT_HEIGHT;
+	extern int HUDScaleFactor;
+
+	if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS && HUDScaleFactor > ONE_FIXED)
+	{
+		font_height = MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT);
+	}
 
 	for(i=0; i<5; i++)
 	{
@@ -5481,6 +5519,11 @@ void RenderBriefingText(int centreY, int brightness)
 				length+=AAFontWidths[(unsigned char)(*ptr++)];
 			}
 		}
+
+		if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS && HUDScaleFactor > ONE_FIXED)
+		{
+			length = MUL_FIXED(HUDScaleFactor, length);
+		}
 		
 		if (lengthOfLongestLine < length)
 		{
@@ -5489,7 +5532,7 @@ void RenderBriefingText(int centreY, int brightness)
 	}
 
 	x = (ScreenDescriptorBlock.SDB_Width-lengthOfLongestLine)/2;
-	y = centreY - 3*HUD_FONT_HEIGHT;
+	y = centreY - 3*font_height;
 	for(i=0; i<5; i++)
 	{
 		if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS)
@@ -5500,8 +5543,8 @@ void RenderBriefingText(int centreY, int brightness)
 		{
 			RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED);
 		}
-		if (i) y+=HUD_FONT_HEIGHT;
-		else y+=HUD_FONT_HEIGHT*2;
+		if (i) y+=font_height;
+		else y+=font_height*2;
 	}
 }
 

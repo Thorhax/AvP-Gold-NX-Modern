@@ -670,6 +670,12 @@ static void SetWindowSize(int PhysicalWidth, int PhysicalHeight, int VirtualWidt
 	ScreenDescriptorBlock.SDB_ClipUp    = 0;
 	ScreenDescriptorBlock.SDB_ClipDown  = VirtualHeight;
 
+	{
+		extern int HUDScaleFactor;
+		HUDScaleFactor = DIV_FIXED(VirtualWidth, 640);
+		if (HUDScaleFactor < ONE_FIXED) HUDScaleFactor = ONE_FIXED;
+	}
+
 	if (window != NULL) {
 		SDL_SetWindowSize(window, PhysicalWidth, PhysicalHeight);
 
