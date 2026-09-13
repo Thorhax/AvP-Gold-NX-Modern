@@ -984,10 +984,13 @@ static void CalculateWidthsOfAAFont()
 
 void RenderKeyConfigRectangle(int alpha)
 {
+	int max_w = (surface && surface->w > 0) ? surface->w : 640;
+	int max_h = (surface && surface->h > 0) ? surface->h : 480;
 	int x1 = 10;
-	int x2 = ScreenDescriptorBlock.SDB_Width-10;
-	int y1 = ScreenDescriptorBlock.SDB_Height/2+25-115;
-	int y2 = ScreenDescriptorBlock.SDB_Height/2+25-115+250;
+	int x2 = max_w - 10;
+	int y1 = 165;
+	int y2 = 415;
+	if (y2 >= max_h) y2 = max_h - 1;
 	int x,y;
 	unsigned short c, *destPtr;
 	

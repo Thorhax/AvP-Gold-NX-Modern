@@ -2678,7 +2678,18 @@ int Hardware_RenderSmallMenuText_Coloured(char *textPtr, int x, int y, int alpha
 void Hardware_RenderKeyConfigRectangle(int alpha)
 {
 	extern void D3D_DrawRectangle(int x, int y, int w, int h, int alpha);
-	D3D_DrawRectangle(10,ScreenDescriptorBlock.SDB_Height/2+25-115,ScreenDescriptorBlock.SDB_Width-20,250,alpha);
+	extern int HUDScaleFactor;
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+
+	int item_spacing = MUL_FIXED(scaleFactor, 26);
+	int clip_range = item_spacing * 4 + item_spacing / 2;
+	int centreY = ScreenDescriptorBlock.SDB_Height / 2 + MUL_FIXED(scaleFactor, 30);
+	int box_top = centreY - clip_range - MUL_FIXED(scaleFactor, 5);
+	int box_bottom = centreY + clip_range + MUL_FIXED(scaleFactor, 15);
+	int box_height = box_bottom - box_top;
+
+	D3D_DrawRectangle(10, box_top, ScreenDescriptorBlock.SDB_Width - 20, box_height, alpha);
 }
 
 void Hardware_RenderHighlightRectangle(int x1,int y1,int x2,int y2,int r, int g, int b)

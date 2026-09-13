@@ -1643,9 +1643,12 @@ static void RenderKeyConfigurationMenu(void)
 	AVPMENU_ELEMENT *elementPtr = AvPMenus.MenuElements;//AvPMenus.CurrentlySelectedElement];
 	int centrePosition;
 	int i;
-	int centreY = ScreenDescriptorBlock.SDB_Height/2+25;
+	int centreY;
 	int y;
-	
+	extern int HUDScaleFactor;
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+
 	if (AvPMenus.MenusState == MENUSSTATE_MAINMENUS)
 	{
 		char *textPtr = GetTextString(AvPMenusData[AvPMenus.CurrentMenu].MenuTitle);
@@ -1661,6 +1664,70 @@ static void RenderKeyConfigurationMenu(void)
 		
 		RenderKeyConfigRectangle(b);
 		RenderMenuText(textPtr,MENU_CENTREX,70,ONE_FIXED,AVPMENUFORMAT_CENTREJUSTIFIED);
+
+		centreY = 280;
+		int item_spacing = 20;
+		int clip_range = 100;
+		int box_top = centreY - 115;
+
+		y = box_top - 45;
+		for (i = 0; i < 2; i++, elementPtr++)
+		{
+			int targetBrightness;
+
+			if (i == AvPMenus.CurrentlySelectedElement)
+			{
+				targetBrightness = BRIGHTNESS_OF_HIGHLIGHTED_ELEMENT;
+			}
+			else
+			{ 
+				targetBrightness = BRIGHTNESS_OF_DARKENED_ELEMENT;
+			}
+
+			if (targetBrightness > elementPtr->Brightness)
+			{
+				elementPtr->Brightness += BRIGHTNESS_CHANGE_SPEED;
+				if (elementPtr->Brightness > targetBrightness)
+				{
+					elementPtr->Brightness = targetBrightness;
+				}
+			}
+			else
+			{
+				elementPtr->Brightness -= BRIGHTNESS_CHANGE_SPEED;
+				if (elementPtr->Brightness < targetBrightness)
+				{
+					elementPtr->Brightness = targetBrightness;
+				}
+			}
+
+			RenderMenuElement(elementPtr, i, y);
+			y += HeightOfMenuElement(elementPtr);
+		}
+
+		centrePosition = (AvPMenus.CurrentlySelectedElement) * ONE_FIXED;
+		if (centrePosition < 2 * ONE_FIXED) centrePosition = 2 * ONE_FIXED;
+		for (i = 2; i < AvPMenus.NumberOfElementsInMenu; i++, elementPtr++)
+		{
+			y = MUL_FIXED(i * 65536 - centrePosition, item_spacing);
+
+			if (y >= -clip_range && y <= clip_range)
+			{
+				int targetBrightness;
+
+				if (i == AvPMenus.CurrentlySelectedElement)
+				{
+					targetBrightness = BRIGHTNESS_OF_HIGHLIGHTED_ELEMENT;
+				}
+				else
+				{ 
+					targetBrightness = BRIGHTNESS_OF_DARKENED_ELEMENT;
+				}
+
+				elementPtr->Brightness = targetBrightness;
+				RenderMenuElement(elementPtr, i, centreY + y);
+			}
+		}
 	}
 	else
 	{
@@ -1675,55 +1742,20 @@ static void RenderKeyConfigurationMenu(void)
 		}
 		
 		Hardware_RenderKeyConfigRectangle(b);
-	}		       
-	y = centreY-160;
-	for (i = 0; i<2; i++, elementPtr++)
-	{
-		int targetBrightness;
 
-		if (i==AvPMenus.CurrentlySelectedElement)
-		{
-			targetBrightness = BRIGHTNESS_OF_HIGHLIGHTED_ELEMENT;
-		}
-		else
-		{ 
-			targetBrightness = BRIGHTNESS_OF_DARKENED_ELEMENT;
-		}
+		int item_spacing = MUL_FIXED(scaleFactor, 26);
+		int clip_range = item_spacing * 4 + item_spacing / 2;
+		centreY = ScreenDescriptorBlock.SDB_Height / 2 + MUL_FIXED(scaleFactor, 30);
+		int box_top = centreY - clip_range - MUL_FIXED(scaleFactor, 5);
 
-		if (targetBrightness > elementPtr->Brightness)
-		{
-			elementPtr->Brightness+=BRIGHTNESS_CHANGE_SPEED;
-			if(elementPtr->Brightness>targetBrightness)
-			{
-				elementPtr->Brightness = targetBrightness;
-			}
-		}
-		else
-		{
-			elementPtr->Brightness-=BRIGHTNESS_CHANGE_SPEED;
-			if(elementPtr->Brightness<targetBrightness)
-			{
-				elementPtr->Brightness = targetBrightness;
-			}
-			
-		}
-		
-		RenderMenuElement(elementPtr,i,y);
-		y += HeightOfMenuElement(elementPtr);
-	}
-	centrePosition = (AvPMenus.CurrentlySelectedElement)*ONE_FIXED;
-	if (centrePosition<2*ONE_FIXED) centrePosition = 2*ONE_FIXED;
-	for (i=2; i<AvPMenus.NumberOfElementsInMenu; i++,elementPtr++)
-	{
+		int btn_h = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 8);
+		y = box_top - btn_h * 2 - MUL_FIXED(scaleFactor, 4);
 
-		y = MUL_FIXED(i*65536-centrePosition,20);
-
-		if (y>=-100 && y<=100)
+		for (i = 0; i < 2; i++, elementPtr++)
 		{
-//			char *textPtr = GetTextString(elementPtr->TextDescription);
 			int targetBrightness;
 
-			if (i==AvPMenus.CurrentlySelectedElement)
+			if (i == AvPMenus.CurrentlySelectedElement)
 			{
 				targetBrightness = BRIGHTNESS_OF_HIGHLIGHTED_ELEMENT;
 			}
@@ -1732,39 +1764,49 @@ static void RenderKeyConfigurationMenu(void)
 				targetBrightness = BRIGHTNESS_OF_DARKENED_ELEMENT;
 			}
 
-			#if 0
 			if (targetBrightness > elementPtr->Brightness)
 			{
-				elementPtr->Brightness+=BRIGHTNESS_CHANGE_SPEED;
-				if(elementPtr->Brightness>targetBrightness)
+				elementPtr->Brightness += BRIGHTNESS_CHANGE_SPEED;
+				if (elementPtr->Brightness > targetBrightness)
 				{
 					elementPtr->Brightness = targetBrightness;
 				}
 			}
 			else
 			{
-				elementPtr->Brightness-=BRIGHTNESS_CHANGE_SPEED;
-				if(elementPtr->Brightness<targetBrightness)
+				elementPtr->Brightness -= BRIGHTNESS_CHANGE_SPEED;
+				if (elementPtr->Brightness < targetBrightness)
 				{
 					elementPtr->Brightness = targetBrightness;
 				}
-				
 			}
-			#else
-			elementPtr->Brightness = targetBrightness;
-			#endif
-			RenderMenuElement(elementPtr, i, centreY+y);
-			#if 0
-			if (AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
-			{
-				Hardware_RenderSmallMenuText(textPtr,MENU_LEFTXEDGE+150,centreY+y,b,AVPMENUFORMAT_LEFTJUSTIFIED/*,MENU_CENTREY-60-100,MENU_CENTREY-60+180*/);
-			}
-			else
-			{
-				RenderSmallMenuText(textPtr,MENU_LEFTXEDGE+150,centreY+y,b,AVPMENUFORMAT_LEFTJUSTIFIED/*,MENU_CENTREY-60-100,MENU_CENTREY-60+180*/);
-			}
-			#endif
 
+			RenderMenuElement(elementPtr, i, y);
+			y += btn_h;
+		}
+
+		centrePosition = (AvPMenus.CurrentlySelectedElement) * ONE_FIXED;
+		if (centrePosition < 2 * ONE_FIXED) centrePosition = 2 * ONE_FIXED;
+		for (i = 2; i < AvPMenus.NumberOfElementsInMenu; i++, elementPtr++)
+		{
+			y = MUL_FIXED(i * 65536 - centrePosition, item_spacing);
+
+			if (y >= -clip_range && y <= clip_range)
+			{
+				int targetBrightness;
+
+				if (i == AvPMenus.CurrentlySelectedElement)
+				{
+					targetBrightness = BRIGHTNESS_OF_HIGHLIGHTED_ELEMENT;
+				}
+				else
+				{ 
+					targetBrightness = BRIGHTNESS_OF_DARKENED_ELEMENT;
+				}
+
+				elementPtr->Brightness = targetBrightness;
+				RenderMenuElement(elementPtr, i, centreY + y);
+			}
 		}
 	}
 
@@ -3875,10 +3917,12 @@ static void RenderMenuElement(AVPMENU_ELEMENT *elementPtr, int e, int y)
 				if(AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
 				{
 					extern int HUDScaleFactor;
-					int xBox = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 100) : 100;
-					int xPad = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4) : 4;
-					int yPad = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4) : 4;
-					int yH = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 19) : 19;
+					int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+						(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+					int xBox = MUL_FIXED(scaleFactor, 100);
+					int xPad = MUL_FIXED(scaleFactor, 4);
+					int yPad = MUL_FIXED(scaleFactor, 3);
+					int yH = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 3);
 					Hardware_RenderHighlightRectangle(x - xBox, y - yPad, x + xPad, y + yH, 0, g, 0);
 				}
 				else
