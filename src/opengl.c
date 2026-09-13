@@ -2222,9 +2222,13 @@ void D3D_HUDQuad_Output(int imageNumber, struct VertexTag *quadVerticesPtr, unsi
 {
 	float RecipW, RecipH;
 	int i;
-	D3DTexture *tex = ImageHeaderArray[imageNumber].D3DTexture;
+	D3DTexture *tex;
 	GLfloat x, y, s, t;
 	int r, g, b, a;
+
+	if (imageNumber < 0) return;
+	tex = ImageHeaderArray[imageNumber].D3DTexture;
+	if (!tex) return;
 
 /* possibly use polygon offset? (predator hud) */
 
@@ -2329,6 +2333,10 @@ void D3D_RenderHUDString(char *stringPtr,int x,int y,int colour)
 		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
 	if (stringPtr == NULL)
+	{
+		return;
+	}
+	if (AAFontImageNumber < 0 || !ImageHeaderArray[AAFontImageNumber].D3DTexture)
 	{
 		return;
 	}
@@ -2550,6 +2558,9 @@ void RenderStringVertically(char *stringPtr, int centreX, int bottomY, int colou
 
 int Hardware_RenderSmallMenuText(char *textPtr, int x, int y, int alpha, enum AVPMENUFORMAT_ID format) 
 {
+	if (textPtr == NULL) return 0;
+	if (AAFontImageNumber < 0 || !ImageHeaderArray[AAFontImageNumber].D3DTexture) return 0;
+
 	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
 		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
@@ -2605,6 +2616,9 @@ int Hardware_RenderSmallMenuText(char *textPtr, int x, int y, int alpha, enum AV
 
 int Hardware_RenderSmallMenuText_Coloured(char *textPtr, int x, int y, int alpha, enum AVPMENUFORMAT_ID format, int red, int green, int blue)
 {
+	if (textPtr == NULL) return 0;
+	if (AAFontImageNumber < 0 || !ImageHeaderArray[AAFontImageNumber].D3DTexture) return 0;
+
 	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
 		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 

@@ -1466,7 +1466,7 @@ static void RenderBriefingScreenInfo(void)
 	}
 	RenderMenuText(GetTextString(textID),MENU_LEFTXEDGE,180,ONE_FIXED/2,AVPMENUFORMAT_LEFTJUSTIFIED);
 #endif	
-	RenderBriefingText(ScreenDescriptorBlock.SDB_Height/2,ONE_FIXED);
+	RenderBriefingText(MENU_CENTREY,ONE_FIXED);
 }
 /* KJL 12:11:18 24/09/98 - specialised code to handle episode selection screen, which
 has features which make it too awkward to add to the general system */
@@ -5508,16 +5508,18 @@ void RenderBriefingText(int centreY, int brightness)
 	int lengthOfLongestLine=-1;
 	int x,y,i;
 	extern int HUDScaleFactor;
-	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
-		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
-	int line_spacing = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 8);
-	int title_spacing = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 18);
-
-	for(i=0; i<5; i++)
+	if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS)
 	{
-		int length = 0;
+		int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+			(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+
+		int line_spacing = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 8);
+		int title_spacing = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 18);
+
+		for(i=0; i<5; i++)
 		{
+			int length = 0;
 			char *ptr = BriefingTextString[i];
 			if (!ptr) continue;
 
@@ -5525,36 +5527,80 @@ void RenderBriefingText(int centreY, int brightness)
 			{
 				length+=AAFontWidths[(unsigned char)(*ptr++)];
 			}
+
+			length = MUL_FIXED(scaleFactor, length);
+			
+			if (lengthOfLongestLine < length)
+			{
+				lengthOfLongestLine = length;
+			}
 		}
 
-		length = MUL_FIXED(scaleFactor, length);
-		
-		if (lengthOfLongestLine < length)
+		x = (ScreenDescriptorBlock.SDB_Width-lengthOfLongestLine)/2;
+		if (x < 20) x = 20;
+
+		// Calculate total height to center briefing block properly
+		int total_height = title_spacing;
+		for(i=1; i<5; i++)
 		{
-			lengthOfLongestLine = length;
+			if (BriefingTextString[i] && BriefingTextString[i][0] && strcmp(BriefingTextString[i], (const char*)BlankLine) != 0)
+				total_height += line_spacing;
+		}
+		y = centreY - total_height/2;
+
+		for(i=0; i<5; i++)
+		{
+			if (!BriefingTextString[i] || !BriefingTextString[i][0] || strcmp(BriefingTextString[i], (const char*)BlankLine) == 0)
+				continue;
+
+			Hardware_RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED);
+			if (i == 0) y += title_spacing;
+			else y += line_spacing;
 		}
 	}
-
-	x = (ScreenDescriptorBlock.SDB_Width-lengthOfLongestLine)/2;
-	if (x < 20) x = 20;
-
-	// Calculate total height to center briefing block properly
-	int total_height = title_spacing;
-	for(i=1; i<5; i++)
+	else
 	{
-		if (BriefingTextString[i] && BriefingTextString[i][0] && strcmp(BriefingTextString[i], BlankLine) != 0)
-			total_height += line_spacing;
-	}
-	y = centreY - total_height/2;
+		// Main Menus briefing screen: software rendered at 640x480
+		int line_spacing = HUD_FONT_HEIGHT + 4;
+		int title_spacing = HUD_FONT_HEIGHT + 10;
 
-	for(i=0; i<5; i++)
-	{
-		if (!BriefingTextString[i] || !BriefingTextString[i][0] || strcmp(BriefingTextString[i], BlankLine) == 0)
-			continue;
+		for(i=0; i<5; i++)
+		{
+			int length = 0;
+			char *ptr = BriefingTextString[i];
+			if (!ptr) continue;
 
-		Hardware_RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED);
-		if (i == 0) y += title_spacing;
-		else y += line_spacing;
+			while(*ptr)
+			{
+				length+=AAFontWidths[(unsigned char)(*ptr++)];
+			}
+
+			if (lengthOfLongestLine < length)
+			{
+				lengthOfLongestLine = length;
+			}
+		}
+
+		x = (640 - lengthOfLongestLine)/2;
+		if (x < 20) x = 20;
+
+		int total_height = title_spacing;
+		for(i=1; i<5; i++)
+		{
+			if (BriefingTextString[i] && BriefingTextString[i][0] && strcmp(BriefingTextString[i], (const char*)BlankLine) != 0)
+				total_height += line_spacing;
+		}
+		y = MENU_CENTREY - total_height/2;
+
+		for(i=0; i<5; i++)
+		{
+			if (!BriefingTextString[i] || !BriefingTextString[i][0] || strcmp(BriefingTextString[i], (const char*)BlankLine) == 0)
+				continue;
+
+			RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED);
+			if (i == 0) y += title_spacing;
+			else y += line_spacing;
+		}
 	}
 }
 
