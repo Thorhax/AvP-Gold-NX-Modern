@@ -72,13 +72,14 @@ void FindLightingValuesFromTriggeredFMV(unsigned char *bufferPtr, FMVTEXTURE *ft
 FMVTEXTURE FMVTexture[MAX_NO_FMVTEXTURES];
 int NumberOfFMVTextures = 0;
 
-#define PLOT_NUM_AUDIO_BUFFERS 4
+#define PLOT_NUM_AUDIO_BUFFERS 32
 #define PLOT_AUDIO_SAMPLE_RATE 22050
 
 static int PlotFMVActive = 0;
 static int PlotFMVNumber = 0;
 static uint32_t PlotNextFrameTicks = 0;
 static uint32_t PlotFrameDurationMs = 66;
+static int PlotEofDrainFrames = 0;
 
 static AvpAvioContext PlotAvioState;
 static AVFormatContext *PlotFmtCtx = NULL;
@@ -96,7 +97,7 @@ static int PlotAudioIdx = -1;
 
 static ALuint PlotAlSource = 0;
 static ALuint PlotAlBuffers[PLOT_NUM_AUDIO_BUFFERS];
-static int PlotAlBuffersInUse = 0;
+static ALuint PlotAllBuffers[PLOT_NUM_AUDIO_BUFFERS];
 
 static uint8_t PlotRGBBuf[128 * 128 * 4];
 
@@ -107,21 +108,35 @@ static void StopPlotFMV(void)
 
 	PlotFMVActive = 0;
 	PlotFMVNumber = 0;
+	PlotEofDrainFrames = 0;
 
 	if (PlotAlSource)
 	{
-		alSourceStop(PlotAlSource);
-		ALint queued = 0;
-		alGetSourcei(PlotAlSource, AL_BUFFERS_QUEUED, &queued);
-		while (queued-- > 0)
+		ALCcontext *alc_ctx = (ALCcontext *)GetAvpSoundContext();
+		if (alc_ctx && alcGetCurrentContext() != alc_ctx)
 		{
-			ALuint buf = 0;
-			alSourceUnqueueBuffers(PlotAlSource, 1, &buf);
+			alcMakeContextCurrent(alc_ctx);
 		}
+
+		alSourceStop(PlotAlSource);
+		ALint q = 0;
+		alGetSourcei(PlotAlSource, AL_BUFFERS_QUEUED, &q);
+		while (q > 0)
+		{
+			ALuint unq = 0;
+			alSourceUnqueueBuffers(PlotAlSource, 1, &unq);
+			q--;
+		}
+		alSourcei(PlotAlSource, AL_BUFFER, 0);
 		alDeleteSources(1, &PlotAlSource);
-		alDeleteBuffers(PLOT_NUM_AUDIO_BUFFERS, PlotAlBuffers);
 		PlotAlSource = 0;
-		PlotAlBuffersInUse = 0;
+	}
+
+	if (PlotAllBuffers[0] != 0)
+	{
+		alDeleteBuffers(PLOT_NUM_AUDIO_BUFFERS, PlotAllBuffers);
+		memset(PlotAlBuffers, 0, sizeof(PlotAlBuffers));
+		memset(PlotAllBuffers, 0, sizeof(PlotAllBuffers));
 	}
 
 	if (PlotSwrCtx)
@@ -260,16 +275,33 @@ static void UpdatePlotFMV(void)
 
 	if (PlotAlSource)
 	{
+		ALCcontext *alc_ctx = (ALCcontext *)GetAvpSoundContext();
+		if (alc_ctx && alcGetCurrentContext() != alc_ctx)
+		{
+			alcMakeContextCurrent(alc_ctx);
+		}
+
 		ALint processed = 0;
 		alGetSourcei(PlotAlSource, AL_BUFFERS_PROCESSED, &processed);
 		while (processed-- > 0)
 		{
-			ALuint buf = 0;
-			alSourceUnqueueBuffers(PlotAlSource, 1, &buf);
+			ALuint unq = 0;
+			alSourceUnqueueBuffers(PlotAlSource, 1, &unq);
+			if (unq != 0)
+			{
+				for (int b = 0; b < PLOT_NUM_AUDIO_BUFFERS; b++)
+				{
+					if (PlotAlBuffers[b] == 0)
+					{
+						PlotAlBuffers[b] = unq;
+						break;
+					}
+				}
+			}
 		}
 
 		float gain = 1.0f;
-		if (SmackerSoundVolume > 0)
+		if (SmackerSoundVolume >= 0)
 		{
 			gain = (float)SmackerSoundVolume / (float)(ONE_FIXED / 512);
 			if (gain > 1.0f) gain = 1.0f;
@@ -300,7 +332,17 @@ static void UpdatePlotFMV(void)
 		int ret = av_read_frame(PlotFmtCtx, PlotPacket);
 		if (ret < 0)
 		{
-			// End of file reached
+			// End of file reached; let any remaining queued audio finish playing
+			if (PlotAlSource)
+			{
+				ALint state = 0;
+				alGetSourcei(PlotAlSource, AL_SOURCE_STATE, &state);
+				if (state == AL_PLAYING && PlotEofDrainFrames++ < 90)
+				{
+					PlotNextFrameTicks = now + PlotFrameDurationMs;
+					return;
+				}
+			}
 			StopPlotFMV();
 			return;
 		}
@@ -329,35 +371,59 @@ static void UpdatePlotFMV(void)
 				while (avcodec_receive_frame(PlotAudioCodecCtx, PlotAudioFrame) >= 0)
 				{
 					int max_out = swr_get_out_samples(PlotSwrCtx, PlotAudioFrame->nb_samples);
-					int16_t *pcm_out = (int16_t *)malloc(max_out * sizeof(int16_t));
-					if (pcm_out)
+					if (max_out > 0)
 					{
-						uint8_t *out_arr[1] = { (uint8_t *)pcm_out };
-						int out_samples = swr_convert(PlotSwrCtx, out_arr, max_out,
-						                             (const uint8_t **)PlotAudioFrame->data, PlotAudioFrame->nb_samples);
-						if (out_samples > 0)
+						int16_t *pcm_out = (int16_t *)malloc(max_out * sizeof(int16_t));
+						if (pcm_out)
 						{
-							ALint processed = 0;
-							alGetSourcei(PlotAlSource, AL_BUFFERS_PROCESSED, &processed);
-							ALuint al_buf = 0;
-							if (processed > 0)
+							uint8_t *out_arr[1] = { (uint8_t *)pcm_out };
+							int out_samples = swr_convert(PlotSwrCtx, out_arr, max_out,
+							                             (const uint8_t **)PlotAudioFrame->data, PlotAudioFrame->nb_samples);
+							if (out_samples > 0)
 							{
-								alSourceUnqueueBuffers(PlotAlSource, 1, &al_buf);
+								ALint processed = 0;
+								alGetSourcei(PlotAlSource, AL_BUFFERS_PROCESSED, &processed);
+								while (processed-- > 0)
+								{
+									ALuint unq = 0;
+									alSourceUnqueueBuffers(PlotAlSource, 1, &unq);
+									if (unq != 0)
+									{
+										for (int b = 0; b < PLOT_NUM_AUDIO_BUFFERS; b++)
+										{
+											if (PlotAlBuffers[b] == 0)
+											{
+												PlotAlBuffers[b] = unq;
+												break;
+											}
+										}
+									}
+								}
+
+								int free_slot = -1;
+								for (int b = 0; b < PLOT_NUM_AUDIO_BUFFERS; b++)
+								{
+									if (PlotAlBuffers[b] != 0)
+									{
+										free_slot = b;
+										break;
+									}
+								}
+
+								if (free_slot >= 0)
+								{
+									ALuint al_buf = PlotAlBuffers[free_slot];
+									PlotAlBuffers[free_slot] = 0; // in-use
+
+									alBufferData(al_buf, AL_FORMAT_MONO16, pcm_out, out_samples * sizeof(int16_t), PLOT_AUDIO_SAMPLE_RATE);
+									alSourceQueueBuffers(PlotAlSource, 1, &al_buf);
+									ALint state = 0;
+									alGetSourcei(PlotAlSource, AL_SOURCE_STATE, &state);
+									if (state != AL_PLAYING) alSourcePlay(PlotAlSource);
+								}
 							}
-							else if (PlotAlBuffersInUse < PLOT_NUM_AUDIO_BUFFERS)
-							{
-								al_buf = PlotAlBuffers[PlotAlBuffersInUse++];
-							}
-							if (al_buf)
-							{
-								alBufferData(al_buf, AL_FORMAT_MONO16, pcm_out, out_samples * sizeof(int16_t), PLOT_AUDIO_SAMPLE_RATE);
-								alSourceQueueBuffers(PlotAlSource, 1, &al_buf);
-								ALint state = 0;
-								alGetSourcei(PlotAlSource, AL_SOURCE_STATE, &state);
-								if (state != AL_PLAYING) alSourcePlay(PlotAlSource);
-							}
+							free(pcm_out);
 						}
-						free(pcm_out);
 					}
 				}
 			}
@@ -573,9 +639,11 @@ void StartTriggerPlotFMV(int number)
 				                    0, NULL);
 				if (PlotSwrCtx && swr_init(PlotSwrCtx) >= 0)
 				{
+					memset(PlotAlBuffers, 0, sizeof(PlotAlBuffers));
+					memset(PlotAllBuffers, 0, sizeof(PlotAllBuffers));
 					alGenSources(1, &PlotAlSource);
 					alGenBuffers(PLOT_NUM_AUDIO_BUFFERS, PlotAlBuffers);
-					PlotAlBuffersInUse = 0;
+					memcpy(PlotAllBuffers, PlotAlBuffers, sizeof(PlotAlBuffers));
 					alSourcei(PlotAlSource, AL_LOOPING, AL_FALSE);
 					alSourcef(PlotAlSource, AL_GAIN, 1.0f);
 				}
