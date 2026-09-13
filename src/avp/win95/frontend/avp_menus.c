@@ -2027,7 +2027,7 @@ static void RenderLoadGameMenu(void)
 			if(AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS)
 			{
 				extern int HUDScaleFactor;
-				int hBox = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 4 + HUD_FONT_HEIGHT * 2) : 4 + HUD_FONT_HEIGHT * 2;
+				int hBox = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT * 2 + 3) : 4 + HUD_FONT_HEIGHT * 2;
 				int yOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 2) : 2;
 				Hardware_RenderHighlightRectangle(MENU_LEFTXEDGE, y - yOffset, MENU_RIGHTXEDGE, y + hBox, 0, 128, 0);
 			}
@@ -2106,12 +2106,13 @@ static void RenderLoadGameMenu(void)
 				extern int HUDScaleFactor;
 				int font_h = (AvPMenus.MenusState == MENUSSTATE_INGAMEMENUS && HUDScaleFactor > ONE_FIXED) ?
 					MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT) : HUD_FONT_HEIGHT;
+				int line2_offset = font_h + ((HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 2) : 1);
 				sprintf(buffer, "%s %02d:%02d:%02d",GetTextString(TEXTSTRING_GAMESTATS_TIMEELAPSED),slotPtr->ElapsedTime_Hours,slotPtr->ElapsedTime_Minutes,slotPtr->ElapsedTime_Seconds);
-				RenderText(buffer,MENU_LEFTXEDGE+30,y+font_h+1,elementPtr->Brightness,AVPMENUFORMAT_LEFTJUSTIFIED);
+				RenderText(buffer,MENU_LEFTXEDGE+30,y+line2_offset,elementPtr->Brightness,AVPMENUFORMAT_LEFTJUSTIFIED);
 
 				sprintf(buffer, "%s: %d",GetTextString(TEXTSTRING_SAVEGAME_SAVESLEFT),slotPtr->SavesLeft);
-				RenderText(buffer,MENU_CENTREX,y+font_h+1,elementPtr->Brightness,AVPMENUFORMAT_CENTREJUSTIFIED);
-				RenderText(ctime(&slotPtr->TimeStamp),MENU_RIGHTXEDGE-30,y+font_h+1,elementPtr->Brightness,AVPMENUFORMAT_RIGHTJUSTIFIED);
+				RenderText(buffer,MENU_CENTREX,y+line2_offset,elementPtr->Brightness,AVPMENUFORMAT_CENTREJUSTIFIED);
+				RenderText(ctime(&slotPtr->TimeStamp),MENU_RIGHTXEDGE-30,y+line2_offset,elementPtr->Brightness,AVPMENUFORMAT_RIGHTJUSTIFIED);
 			}
 		}
 		else
@@ -2134,8 +2135,8 @@ static void RenderLoadGameMenu(void)
 		char *textPtr = GetTextString(AvPMenusData[AvPMenus.CurrentMenu].MenuTitle);
 		AVPMENU_ELEMENT *elementPtr = &AvPMenus.MenuElements[AvPMenus.CurrentlySelectedElement];
 		extern int HUDScaleFactor;
-		int titleOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 30) : 30;
-		int helpOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 20) : 20;
+		int titleOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 22) : 30;
+		int helpOffset = (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 16) : 20;
 		y = (ScreenDescriptorBlock.SDB_Height - AvPMenus.MenuHeight)/2 - titleOffset;
 		RenderText(textPtr,MENU_CENTREX,y,ONE_FIXED,AVPMENUFORMAT_CENTREJUSTIFIED);
 		y = (ScreenDescriptorBlock.SDB_Height + AvPMenus.MenuHeight)/2 + helpOffset;
@@ -4098,7 +4099,12 @@ static int HeightOfMenuElement(AVPMENU_ELEMENT *elementPtr)
 		extern int HUDScaleFactor;
 		if (HUDScaleFactor > ONE_FIXED)
 		{
-			if (AvPMenus.FontToUse != AVPMENU_FONT_BIG)
+			if (elementPtr->ElementID == AVPMENU_ELEMENT_LOADGAME ||
+			    elementPtr->ElementID == AVPMENU_ELEMENT_SAVEGAME)
+			{
+				h = MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT * 2 + 6);
+			}
+			else if (AvPMenus.FontToUse != AVPMENU_FONT_BIG)
 			{
 				h = MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT + 8);
 			}

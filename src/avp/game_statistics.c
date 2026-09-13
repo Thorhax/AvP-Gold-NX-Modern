@@ -22,11 +22,11 @@
 
 #define FIXED_MINUTE (ONE_FIXED*60)
 
-#define TABPOINT1	(ScreenDescriptorBlock.SDB_Width/10)
+#define TABPOINT1	((ScreenDescriptorBlock.SDB_Width * 6) / 100)
 #define TABPOINT1A	(ScreenDescriptorBlock.SDB_Width/4)
-#define TABPOINT2	(ScreenDescriptorBlock.SDB_Width/2)
-#define TABPOINT3	((ScreenDescriptorBlock.SDB_Width/6)+(ScreenDescriptorBlock.SDB_Width/2))
-#define TABPOINT4	(((ScreenDescriptorBlock.SDB_Width/6)*2)+(ScreenDescriptorBlock.SDB_Width/2))
+#define TABPOINT2	((ScreenDescriptorBlock.SDB_Width * 52) / 100)
+#define TABPOINT3	((ScreenDescriptorBlock.SDB_Width * 70) / 100)
+#define TABPOINT4	((ScreenDescriptorBlock.SDB_Width * 88) / 100)
 
 extern int DebuggingCommandsActive;
 #define NotCheating ((CheatMode_Active==CHEATMODE_NONACTIVE)&&!DebuggingCommandsActive)
@@ -76,7 +76,8 @@ AvP_GameStats_Stored DefaultLevelGameStats = {
 #define COLOUR_RED		(0xffff0000)
 #define COLOUR_GREEN	(0xff00ff00)
 
-#define NEWLINE_SPACING	((ScreenDescriptorBlock.SDB_Height<400)? 12:15)
+extern int HUDScaleFactor;
+#define NEWLINE_SPACING	((HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, 18) : ((ScreenDescriptorBlock.SDB_Height<400)? 12:15))
 
 void CurrentGameStats_Initialise(void)
 {
@@ -963,26 +964,31 @@ extern void DoStatisticsScreen(int completed_level)
 	targets=0;
 	targetspassed=0;
 
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
+	int header_y = (scaleFactor > ONE_FIXED) ? MUL_FIXED(scaleFactor, 12) : 20;
+	int subheader_y = (scaleFactor > ONE_FIXED) ? MUL_FIXED(scaleFactor, 28) : 40;
+
 	/* Print their name. */
 	sprintf(buffer,"%s",UserProfilePtr->Name);
-	RenderString(buffer,TABPOINT1,20,COLOUR_WHITE);
+	RenderString(buffer,TABPOINT1,header_y,COLOUR_WHITE);
 
 	if (completed_level) {
 		RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_LEVELCOMPLETED),
-			ScreenDescriptorBlock.SDB_Width/2,20,COLOUR_GREEN);
+			ScreenDescriptorBlock.SDB_Width/2,header_y,COLOUR_GREEN);
 	} else {
 		RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_LEVELNOTCOMPLETED),
-			ScreenDescriptorBlock.SDB_Width/2,20,COLOUR_RED);
+			ScreenDescriptorBlock.SDB_Width/2,header_y,COLOUR_RED);
 	}
 	
 	#if 0
-	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_NAME),TABPOINT1A,40,COLOUR_WHITE);
+	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_NAME),TABPOINT1A,subheader_y,COLOUR_WHITE);
 	#endif
-	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_YOUR),TABPOINT2,40,COLOUR_WHITE);
-	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_BEST),TABPOINT3,40,COLOUR_WHITE);
-	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_TARGET),TABPOINT4,40,COLOUR_WHITE);
+	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_YOUR),TABPOINT2,subheader_y,COLOUR_WHITE);
+	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_BEST),TABPOINT3,subheader_y,COLOUR_WHITE);
+	RenderStringCentred(GetTextString(TEXTSTRING_GAMESTATS_TARGET),TABPOINT4,subheader_y,COLOUR_WHITE);
 
-	y = 55;
+	y = (scaleFactor > ONE_FIXED) ? MUL_FIXED(scaleFactor, 44) : 55;
 
 	colour_to_draw=COLOUR_WHITE;
 
