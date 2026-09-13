@@ -28,12 +28,14 @@
 extern int SoundSys_IsOn(void);
 extern float PlatVolumeToGain(int volume);
 extern ALvoid *GetAvpSoundContext(void);
+extern ALuint PlatGetCDDASource(void);
+extern const ALuint *PlatGetCDDABuffers(void);
 extern void db_logf_fired(const char *fmtStrP, ...);
 
 int CDPlayerVolume = 127;
 
 #define NUM_CDDA_BUFFERS 4
-#define CDDA_BUFFER_SAMPLES 4096
+#define CDDA_BUFFER_SAMPLES 16384
 
 static const char *known_gold_tracks[] = {
 	"",
@@ -76,6 +78,38 @@ static void ScanCDTracks(void)
 	s_tracks_scanned = 1;
 	s_tracks_available = 0;
 	memset(s_track_paths, 0, sizeof(s_track_paths));
+
+	// First pass: try resolving known Gold track titles directly via FindGameFilePath
+	for (int track = 1; track <= 15; track++)
+	{
+		const char *title = known_gold_tracks[track];
+		if (!title || !title[0]) continue;
+
+		char probe[PATH_MAX];
+		char resolved[PATH_MAX];
+
+		// Try FMVs/<title>.bik
+		snprintf(probe, sizeof(probe), "FMVs/%s.bik", title);
+		if (FindGameFilePath(probe, resolved, sizeof(resolved)))
+		{
+			strncpy(s_track_paths[track], resolved, sizeof(s_track_paths[track]) - 1);
+			s_track_paths[track][sizeof(s_track_paths[track]) - 1] = 0;
+			s_tracks_available++;
+			db_logf_fired("CDDA: FindGameFilePath found track %d at '%s'\n", track, resolved);
+			continue;
+		}
+
+		// Try <title>.bik
+		snprintf(probe, sizeof(probe), "%s.bik", title);
+		if (FindGameFilePath(probe, resolved, sizeof(resolved)))
+		{
+			strncpy(s_track_paths[track], resolved, sizeof(s_track_paths[track]) - 1);
+			s_track_paths[track][sizeof(s_track_paths[track]) - 1] = 0;
+			s_tracks_available++;
+			db_logf_fired("CDDA: FindGameFilePath found track %d at '%s'\n", track, resolved);
+			continue;
+		}
+	}
 
 	const char *base_dirs[6];
 	int num_bases = 0;
@@ -217,23 +251,48 @@ static int CDDA_ThreadFunc(void *data)
 	ALCcontext *ctx = (ALCcontext *)GetAvpSoundContext();
 	if (ctx)
 	{
-		alcMakeContextCurrent(ctx);
+		ALCboolean ok = alcMakeContextCurrent(ctx);
+		db_logf_fired("CDDA: alcMakeContextCurrent result=%d\n", ok);
+	}
+	else
+	{
+		db_logf_fired("CDDA: Sound context is NULL!\n");
 	}
 
-	ALuint alSource = 0;
+	ALuint alSource = PlatGetCDDASource();
 	ALuint alBuffers[NUM_CDDA_BUFFERS];
 	memset(alBuffers, 0, sizeof(alBuffers));
 
-	alGenSources(1, &alSource);
-	alGenBuffers(NUM_CDDA_BUFFERS, alBuffers);
+	const ALuint *preBuffers = PlatGetCDDABuffers();
+	if (alSource != 0 && preBuffers && preBuffers[0] != 0)
+	{
+		memcpy(alBuffers, preBuffers, sizeof(alBuffers));
+		db_logf_fired("CDDA: Using pre-allocated source=%u, buffers=[%u,%u,%u,%u]\n",
+		              alSource, alBuffers[0], alBuffers[1], alBuffers[2], alBuffers[3]);
+	}
+	else
+	{
+		alGetError();
+		alGenSources(1, &alSource);
+		alGenBuffers(NUM_CDDA_BUFFERS, alBuffers);
+		db_logf_fired("CDDA: Dynamically generated source=%u, buffers=[%u,%u,%u,%u], err=0x%x\n",
+		              alSource, alBuffers[0], alBuffers[1], alBuffers[2], alBuffers[3], alGetError());
+	}
 
-	alSource3f(alSource, AL_POSITION, 0.0f, 0.0f, 0.0f);
-	alSource3f(alSource, AL_VELOCITY, 0.0f, 0.0f, 0.0f);
-	alSource3f(alSource, AL_DIRECTION, 0.0f, 0.0f, 0.0f);
-	alSourcef(alSource, AL_ROLLOFF_FACTOR, 0.0f);
-	alSourcei(alSource, AL_SOURCE_RELATIVE, AL_TRUE);
-	alSourcef(alSource, AL_PITCH, 1.0f);
-	alSourcef(alSource, AL_GAIN, PlatVolumeToGain(CDPlayerVolume));
+	if (alSource == 0)
+	{
+		db_logf_fired("CDDA ERROR: Could not obtain OpenAL source for CDDA!\n");
+	}
+	else
+	{
+		alSource3f(alSource, AL_POSITION, 0.0f, 0.0f, 0.0f);
+		alSource3f(alSource, AL_VELOCITY, 0.0f, 0.0f, 0.0f);
+		alSource3f(alSource, AL_DIRECTION, 0.0f, 0.0f, 0.0f);
+		alSourcef(alSource, AL_ROLLOFF_FACTOR, 0.0f);
+		alSourcei(alSource, AL_SOURCE_RELATIVE, AL_TRUE);
+		alSourcef(alSource, AL_PITCH, 1.0f);
+		alSourcef(alSource, AL_GAIN, PlatVolumeToGain(CDPlayerVolume));
+	}
 
 	while (!cdda_thread_exit)
 	{
@@ -490,9 +549,15 @@ static int CDDA_ThreadFunc(void *data)
 		}
 	}
 
-	alSourceStop(alSource);
-	alDeleteSources(1, &alSource);
-	alDeleteBuffers(NUM_CDDA_BUFFERS, alBuffers);
+	if (alSource != 0)
+	{
+		alSourceStop(alSource);
+		if (alSource != PlatGetCDDASource())
+		{
+			alDeleteSources(1, &alSource);
+			alDeleteBuffers(NUM_CDDA_BUFFERS, alBuffers);
+		}
+	}
 
 	return 0;
 }
@@ -599,12 +664,14 @@ int CDDA_IsPlaying(void)
 
 int CDDA_IsOn(void)
 {
+	if (!cdda_initialized) CDDA_Start();
 	if (!s_tracks_scanned) ScanCDTracks();
 	return (cdda_initialized && cdda_active && s_tracks_available > 0);
 }
 
 int CDDA_CheckNumberOfTracks(void)
 {
+	if (!cdda_initialized) CDDA_Start();
 	if (!s_tracks_scanned) ScanCDTracks();
 	return s_tracks_available;
 }
@@ -623,6 +690,7 @@ int CDDA_GetCurrentVolumeSetting(void)
 
 void CDDA_SwitchOn(void)
 {
+	if (!cdda_initialized) CDDA_Start();
 	cdda_active = 1;
 }
 

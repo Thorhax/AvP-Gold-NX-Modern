@@ -169,8 +169,21 @@ openal.c TODO:
 1. There is no EAX/Reverb.  But there's probably not much I can do...
 2. Restarting sound system may or may not work.
 3. Better Error Handling (device not avail, etc).
-4. Implement sample offsets in psnd.c using AL_SAMPLE_OFFSET (add api here)
 */
+
+static ALuint AvpCDDASource = 0;
+static ALuint AvpCDDABuffers[4] = {0, 0, 0, 0};
+
+ALuint PlatGetCDDASource(void)
+{
+	return AvpCDDASource;
+}
+
+const ALuint *PlatGetCDDABuffers(void)
+{
+	return AvpCDDABuffers;
+}
+
 int PlatStartSoundSys()
 {
 	int initSources;
@@ -238,9 +251,13 @@ int PlatStartSoundSys()
 	PlatSetEnviroment(EAX_ENVIRONMENT_DEFAULT, EAX_REVERBMIX_USEDISTANCE);
 #endif
 	
+	// Pre-allocate dedicated CDDA streaming source and buffers to ensure soundtrack is never starved
+	alGenSources(1, &AvpCDDASource);
+	alGenBuffers(4, AvpCDDABuffers);
+
 	initSources = 1;
 	
-	for (i = 0; i < SOUND_MAXACTIVE; i++) {
+	for (i = 0; i < SOUND_MAXACTIVE - 8; i++) {
 		ALuint p;
 		
 		if( initSources ) {
@@ -285,7 +302,15 @@ int PlatStartSoundSys()
 
 void PlatEndSoundSys()
 {
-/* TODO - free everything */
+	if (AvpCDDASource) {
+		alSourceStop(AvpCDDASource);
+		alDeleteSources(1, &AvpCDDASource);
+		AvpCDDASource = 0;
+	}
+	if (AvpCDDABuffers[0]) {
+		alDeleteBuffers(4, AvpCDDABuffers);
+		memset(AvpCDDABuffers, 0, sizeof(AvpCDDABuffers));
+	}
 	fprintf(stderr, "OPENAL: PlatEndSoundSys()\n");
 }
 
