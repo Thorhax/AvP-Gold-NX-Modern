@@ -1,5 +1,6 @@
 extern "C"
 {
+#include "SDL.h"
 #include "3dc.h"
 #include "ourasert.h"
 #include "psndplat.h"
@@ -201,6 +202,7 @@ void LoadCDTrackList()
 }
 
 static unsigned int TrackSelectCounter=0;
+static uint32_t lastTrackCheckTicks=0;
 
 static BOOL PickCDTrack(List<int>& track_list)
 {
@@ -241,6 +243,13 @@ void CheckCDAndChooseTrackIfNeeded()
 		//Lets choose a new track then
 	}
 
+	// Throttle track selection checks so we never hammer the filesystem or player
+	uint32_t now = SDL_GetTicks();
+	if (lastTrackCheckTicks != 0 && (now - lastTrackCheckTicks < 2500))
+	{
+		return;
+	}
+	lastTrackCheckTicks = now;
 		
 	if(AvP.Network == I_No_Network)
 	{
@@ -270,6 +279,7 @@ void ResetCDPlayForLevel()
 	CDDA_CheckNumberOfTracks();
 
 	TrackSelectCounter=0;
+	lastTrackCheckTicks=0;
 	CDDA_Stop();
 }
 

@@ -23,6 +23,7 @@
 #include "win95/cd_player.h"
 #include "cdplayer.h"
 #include "files.h"
+#include "avp_ffmpeg.h"
 
 extern int SoundSys_IsOn(void);
 extern float PlatVolumeToGain(int volume);
@@ -65,11 +66,16 @@ static int cdda_req_loop = 0;
 static int cdda_stop_flag = 0;
 static int cdda_is_playing = 0;
 
-static int FindCDTrackFilePath(int track, char *out_path, size_t max_len)
+static char s_track_paths[16][PATH_MAX];
+static int s_tracks_scanned = 0;
+static int s_tracks_available = 0;
+
+static void ScanCDTracks(void)
 {
-	struct stat st;
-	if (track <= 0 || !out_path || max_len == 0)
-		return 0;
+	if (s_tracks_scanned) return;
+	s_tracks_scanned = 1;
+	s_tracks_available = 0;
+	memset(s_track_paths, 0, sizeof(s_track_paths));
 
 	const char *base_dirs[6];
 	int num_bases = 0;
@@ -87,17 +93,6 @@ static int FindCDTrackFilePath(int track, char *out_path, size_t max_len)
 		"cdtracks", "CDTracks", "cdda", "sound", "sound/music", "sound/cdtracks", ""
 	};
 	int num_subdirs = sizeof(subdirs) / sizeof(subdirs[0]);
-
-	char num_str2[16];
-	char track_str1[32];
-	char track_str2[32];
-	char track_str3[32];
-	snprintf(num_str2, sizeof(num_str2), "%02d", track);
-	snprintf(track_str1, sizeof(track_str1), "track%02d", track);
-	snprintf(track_str2, sizeof(track_str2), "track_%02d", track);
-	snprintf(track_str3, sizeof(track_str3), "track%d", track);
-
-	const char *known_title = (track >= 1 && track <= 15) ? known_gold_tracks[track] : NULL;
 
 	for (int b = 0; b < num_bases; b++)
 	{
@@ -129,37 +124,51 @@ static int FindCDTrackFilePath(int track, char *out_path, size_t max_len)
 				                 strcasecmp(ext, ".flac") == 0);
 				if (!valid_ext) continue;
 
-				int matched = 0;
-
-				// 1. Known title match (e.g. "01 marine music 1")
-				if (known_title && strcasecmp(entry_base, known_title) == 0)
-					matched = 1;
-
-				// 2. Track prefix match (e.g. "track01", "track_01", "track1")
-				if (!matched && (strcasecmp(entry_base, track_str1) == 0 ||
-				                 strcasecmp(entry_base, track_str2) == 0 ||
-				                 strcasecmp(entry_base, track_str3) == 0))
-					matched = 1;
-
-				// 3. Two-digit number prefix (e.g. "01 colony", "01 - Colony", "01")
-				if (!matched && strncmp(entry_base, num_str2, 2) == 0)
+				for (int track = 1; track <= 15; track++)
 				{
-					char next_char = entry_base[2];
-					if (next_char == 0 || next_char == ' ' || next_char == '_' ||
-					    next_char == '-' || next_char == '.')
-					{
+					if (s_track_paths[track][0] != 0) continue;
+
+					char num_str2[16];
+					char track_str1[32];
+					char track_str2[32];
+					char track_str3[32];
+					snprintf(num_str2, sizeof(num_str2), "%02d", track);
+					snprintf(track_str1, sizeof(track_str1), "track%02d", track);
+					snprintf(track_str2, sizeof(track_str2), "track_%02d", track);
+					snprintf(track_str3, sizeof(track_str3), "track%d", track);
+
+					const char *known_title = (track >= 1 && track <= 15) ? known_gold_tracks[track] : NULL;
+					int matched = 0;
+
+					if (known_title && strcasecmp(entry_base, known_title) == 0)
 						matched = 1;
-					}
-				}
 
-				if (matched)
-				{
-					snprintf(out_path, max_len, "%s/%s", dir_path, de->d_name);
-					if (stat(out_path, &st) == 0)
+					if (!matched && (strcasecmp(entry_base, track_str1) == 0 ||
+					                 strcasecmp(entry_base, track_str2) == 0 ||
+					                 strcasecmp(entry_base, track_str3) == 0))
+						matched = 1;
+
+					if (!matched && strncmp(entry_base, num_str2, 2) == 0)
 					{
-						closedir(d);
-						db_logf_fired("CDDA: found track %d at '%s'\n", track, out_path);
-						return 1;
+						char next_char = entry_base[2];
+						if (next_char == 0 || next_char == ' ' || next_char == '_' ||
+						    next_char == '-' || next_char == '.')
+						{
+							matched = 1;
+						}
+					}
+
+					if (matched)
+					{
+						char full_file[PATH_MAX];
+						snprintf(full_file, sizeof(full_file), "%s/%s", dir_path, de->d_name);
+						struct stat st;
+						if (stat(full_file, &st) == 0)
+						{
+							snprintf(s_track_paths[track], sizeof(s_track_paths[track]), "%s", full_file);
+							s_tracks_available++;
+							db_logf_fired("CDDA: found track %d at '%s'\n", track, full_file);
+						}
 					}
 				}
 			}
@@ -167,7 +176,28 @@ static int FindCDTrackFilePath(int track, char *out_path, size_t max_len)
 		}
 	}
 
-	db_logf_fired("CDDA: track %d not found on disk\n", track);
+	db_logf_fired("CDDA: Scan complete, %d tracks found\n", s_tracks_available);
+	if (s_tracks_available == 0)
+	{
+		cdda_active = 0;
+	}
+}
+
+static int FindCDTrackFilePath(int track, char *out_path, size_t max_len)
+{
+	if (track < 1 || track > 15 || !out_path || max_len == 0)
+		return 0;
+
+	if (!s_tracks_scanned)
+		ScanCDTracks();
+
+	if (s_track_paths[track][0] != 0)
+	{
+		strncpy(out_path, s_track_paths[track], max_len - 1);
+		out_path[max_len - 1] = 0;
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -233,8 +263,9 @@ static int CDDA_ThreadFunc(void *data)
 
 		db_logf_fired("CDDA: Playing track %d from '%s' (loop=%d)\n", track, track_path, loop);
 
-		AVFormatContext *fmt_ctx = NULL;
-		if (avformat_open_input(&fmt_ctx, track_path, NULL, NULL) < 0)
+		AvpAvioContext avio_state;
+		AVFormatContext *fmt_ctx = AvpOpenMediaFile(track_path, &avio_state);
+		if (!fmt_ctx)
 		{
 			db_logf_fired("CDDA: Failed to open '%s'\n", track_path);
 			cdda_is_playing = 0;
@@ -244,7 +275,7 @@ static int CDDA_ThreadFunc(void *data)
 		if (avformat_find_stream_info(fmt_ctx, NULL) < 0)
 		{
 			db_logf_fired("CDDA: avformat_find_stream_info failed for '%s'\n", track_path);
-			avformat_close_input(&fmt_ctx);
+			AvpCloseMediaFile(&avio_state);
 			cdda_is_playing = 0;
 			continue;
 		}
@@ -253,7 +284,7 @@ static int CDDA_ThreadFunc(void *data)
 		if (a_idx < 0)
 		{
 			db_logf_fired("CDDA: No audio stream in '%s'\n", track_path);
-			avformat_close_input(&fmt_ctx);
+			AvpCloseMediaFile(&avio_state);
 			cdda_is_playing = 0;
 			continue;
 		}
@@ -263,7 +294,7 @@ static int CDDA_ThreadFunc(void *data)
 		if (!a_codec)
 		{
 			db_logf_fired("CDDA: Unsupported audio codec in '%s'\n", track_path);
-			avformat_close_input(&fmt_ctx);
+			AvpCloseMediaFile(&avio_state);
 			cdda_is_playing = 0;
 			continue;
 		}
@@ -444,7 +475,7 @@ static int CDDA_ThreadFunc(void *data)
 		av_packet_free(&pkt);
 		swr_free(&swr_ctx);
 		avcodec_free_context(&a_ctx);
-		avformat_close_input(&fmt_ctx);
+		AvpCloseMediaFile(&avio_state);
 
 		if (!cdda_stop_flag && cdda_req_track <= 0)
 		{
@@ -566,12 +597,14 @@ int CDDA_IsPlaying(void)
 
 int CDDA_IsOn(void)
 {
-	return (cdda_initialized && cdda_active);
+	if (!s_tracks_scanned) ScanCDTracks();
+	return (cdda_initialized && cdda_active && s_tracks_available > 0);
 }
 
 int CDDA_CheckNumberOfTracks(void)
 {
-	return 15;
+	if (!s_tracks_scanned) ScanCDTracks();
+	return s_tracks_available;
 }
 
 void CDDA_ChangeVolume(int volume)

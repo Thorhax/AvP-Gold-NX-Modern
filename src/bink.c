@@ -22,6 +22,7 @@
 #include "3dc.h"
 #include "bink.h"
 #include "files.h"
+#include "avp_ffmpeg.h"
 
 extern int SoundSys_IsOn(void);
 extern float PlatVolumeToGain(int volume);
@@ -63,6 +64,11 @@ static void ClearAllInputState(void)
 	DebouncedKeyboardInput[KEY_CR] = 0;
 	KeyboardInput[KEY_SPACE] = 0;
 	DebouncedKeyboardInput[KEY_SPACE] = 0;
+	for (int i = 0; i < 16; i++)
+	{
+		KeyboardInput[KEY_JOYSTICK_BUTTON_1 + i] = 0;
+		DebouncedKeyboardInput[KEY_JOYSTICK_BUTTON_1 + i] = 0;
+	}
 }
 
 static int CheckForSkip(uint32_t start_ticks, int *button_released)
@@ -75,21 +81,25 @@ static int CheckForSkip(uint32_t start_ticks, int *button_released)
 	int escape_down = KeyboardInput[KEY_ESCAPE];
 	int cr_down = KeyboardInput[KEY_CR];
 	int space_down = KeyboardInput[KEY_SPACE];
+	int btn_down = (KeyboardInput[KEY_JOYSTICK_BUTTON_1] || KeyboardInput[KEY_JOYSTICK_BUTTON_2] ||
+	                KeyboardInput[KEY_JOYSTICK_BUTTON_10] || KeyboardInput[KEY_JOYSTICK_BUTTON_11]);
 
-	if (!escape_down && !cr_down && !space_down)
+	if (!escape_down && !cr_down && !space_down && !btn_down)
 	{
 		*button_released = 1;
 	}
 
-	// 600ms grace period to avoid instant skip from launch button press
-	if (elapsed < 600)
+	// 800ms grace period to avoid instant skip from launch button press
+	if (elapsed < 800)
 	{
 		return 0;
 	}
 
 	if (*button_released)
 	{
-		if (DebouncedKeyboardInput[KEY_ESCAPE] || DebouncedKeyboardInput[KEY_CR] || DebouncedKeyboardInput[KEY_SPACE] ||
+		if (DebouncedKeyboardInput[KEY_ESCAPE] || DebouncedKeyboardInput[KEY_CR] ||
+		    DebouncedKeyboardInput[KEY_SPACE] || DebouncedKeyboardInput[KEY_JOYSTICK_BUTTON_1] ||
+		    DebouncedKeyboardInput[KEY_JOYSTICK_BUTTON_2] || DebouncedKeyboardInput[KEY_JOYSTICK_BUTTON_11] ||
 		    escape_down)
 		{
 			return 1;
@@ -218,17 +228,18 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 
 	db_logf_fired("PlayBinkedFMV: Playing '%s' (resolved path: '%s')\n", filenamePtr, resolvedPath);
 
-	AVFormatContext *fmt_ctx = NULL;
-	if (avformat_open_input(&fmt_ctx, resolvedPath, NULL, NULL) < 0)
+	AvpAvioContext avio_state;
+	AVFormatContext *fmt_ctx = AvpOpenMediaFile(resolvedPath, &avio_state);
+	if (!fmt_ctx)
 	{
-		db_logf_fired("PlayBinkedFMV: avformat_open_input failed for '%s'\n", resolvedPath);
+		db_logf_fired("PlayBinkedFMV: AvpOpenMediaFile failed for '%s'\n", resolvedPath);
 		return;
 	}
 
 	if (avformat_find_stream_info(fmt_ctx, NULL) < 0)
 	{
 		db_logf_fired("PlayBinkedFMV: avformat_find_stream_info failed\n");
-		avformat_close_input(&fmt_ctx);
+		AvpCloseMediaFile(&avio_state);
 		return;
 	}
 
@@ -238,7 +249,7 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 	if (video_idx < 0 && audio_idx < 0)
 	{
 		db_logf_fired("PlayBinkedFMV: No valid video or audio stream in '%s'\n", resolvedPath);
-		avformat_close_input(&fmt_ctx);
+		AvpCloseMediaFile(&avio_state);
 		return;
 	}
 
@@ -562,7 +573,14 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 	if (has_audio && alSource)
 	{
 		alSourceStop(alSource);
-		alSourcei(alSource, AL_BUFFER, 0);
+		ALint q = 0;
+		alGetSourcei(alSource, AL_BUFFERS_QUEUED, &q);
+		while (q > 0)
+		{
+			ALuint unq = 0;
+			alSourceUnqueueBuffers(alSource, 1, &unq);
+			q--;
+		}
 		alDeleteSources(1, &alSource);
 		alDeleteBuffers(NUM_AUDIO_BUFFERS, allBuffers);
 	}
@@ -597,7 +615,7 @@ void PlayBinkedFMV(char *filenamePtr, int volume)
 	av_frame_free(&a_frame);
 	av_packet_free(&pkt);
 
-	avformat_close_input(&fmt_ctx);
+	AvpCloseMediaFile(&avio_state);
 
 	// Clear screen to black and clear input state
 	ClearScreenToBlack();
