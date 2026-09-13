@@ -112,17 +112,19 @@ static void ScanCDTracks(void)
 			{
 				if (de->d_name[0] == '.') continue;
 
-				char entry_base[128];
-				strncpy(entry_base, de->d_name, sizeof(entry_base) - 1);
-				entry_base[sizeof(entry_base) - 1] = 0;
-				char *entry_dot = strrchr(entry_base, '.');
-				const char *ext = entry_dot ? entry_dot : "";
-				if (entry_dot) *entry_dot = 0;
+				char *file_dot = strrchr(de->d_name, '.');
+				const char *ext = file_dot ? file_dot : "";
 
 				int valid_ext = (strcasecmp(ext, ".bik") == 0 || strcasecmp(ext, ".ogg") == 0 ||
 				                 strcasecmp(ext, ".wav") == 0 || strcasecmp(ext, ".mp3") == 0 ||
 				                 strcasecmp(ext, ".flac") == 0);
 				if (!valid_ext) continue;
+
+				char entry_base[128];
+				strncpy(entry_base, de->d_name, sizeof(entry_base) - 1);
+				entry_base[sizeof(entry_base) - 1] = 0;
+				char *entry_dot = strrchr(entry_base, '.');
+				if (entry_dot) *entry_dot = 0;
 
 				for (int track = 1; track <= 15; track++)
 				{

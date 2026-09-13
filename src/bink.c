@@ -171,25 +171,29 @@ static int FindMovieFilePath(const char *filename, char *out_path, size_t max_le
 			{
 				if (de->d_name[0] == '.') continue;
 
+				char *file_dot = strrchr(de->d_name, '.');
+				const char *ext = file_dot ? file_dot : "";
+
+				if (strcasecmp(ext, ".bik") != 0 && strcasecmp(ext, ".smk") != 0 &&
+				    strcasecmp(ext, ".mp4") != 0 && strcasecmp(ext, ".mkv") != 0)
+				{
+					continue;
+				}
+
 				char entry_base[128];
 				strncpy(entry_base, de->d_name, sizeof(entry_base) - 1);
 				entry_base[sizeof(entry_base) - 1] = 0;
 				char *entry_dot = strrchr(entry_base, '.');
-				const char *ext = entry_dot ? entry_dot : "";
 				if (entry_dot) *entry_dot = 0;
 
 				if (strcasecmp(entry_base, base_name) == 0)
 				{
-					if (strcasecmp(ext, ".bik") == 0 || strcasecmp(ext, ".smk") == 0 ||
-					    strcasecmp(ext, ".mp4") == 0 || strcasecmp(ext, ".mkv") == 0)
+					snprintf(out_path, max_len, "%s/%s", dir_path, de->d_name);
+					if (stat(out_path, &st) == 0)
 					{
-						snprintf(out_path, max_len, "%s/%s", dir_path, de->d_name);
-						if (stat(out_path, &st) == 0)
-						{
-							closedir(d);
-							db_logf_fired("FindMovieFilePath: found '%s' at '%s'\n", filename, out_path);
-							return 1;
-						}
+						closedir(d);
+						db_logf_fired("FindMovieFilePath: found '%s' at '%s'\n", filename, out_path);
+						return 1;
 					}
 				}
 			}
