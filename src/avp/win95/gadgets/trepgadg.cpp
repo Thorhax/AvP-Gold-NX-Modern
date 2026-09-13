@@ -72,6 +72,12 @@
 
 static int NumberOfLinesToDisplay=0;
 
+static inline int GetTextReportWidth(void)
+{
+	extern int HUDScaleFactor;
+	return (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, TEXT_REPORT_MAX_W) : TEXT_REPORT_MAX_W;
+}
+
 /* Exported globals ************************************************/
 
 /* Internal type definitions ***************************************/
@@ -159,7 +165,7 @@ void TextReportGadget :: Render
 		struct r2rect R2Rect_ClipForText = r2rect
 		(
 			R2Pos,
-			TEXT_REPORT_MAX_W,
+			GetTextReportWidth(),
 			( MAX_MESSAGES_TO_DISPLAY * FontHeight )
 		);
 
@@ -288,7 +294,7 @@ struct r2pos TextReportGadget :: GetPos_Rel
 {
 	return r2pos
 	(
-		(R2Rect_Parent . Width() - TEXT_REPORT_MAX_W)/2,
+		(R2Rect_Parent . Width() - GetTextReportWidth())/2,
 		p666_Scroll -> GetCoord_Int()
 	);
 }
@@ -303,7 +309,7 @@ r2size TextReportGadget :: GetSize
 
 	return r2size
 	(
-		TEXT_REPORT_MAX_W,
+		GetTextReportWidth(),
 		( MAX_MESSAGES_TO_DISPLAY * pLetterFont -> GetHeight() )
 	);
 }
@@ -403,8 +409,8 @@ void TextReportGadget :: AddTextReport
 
 			*pLetterFont, // const IndexedFont& IndexedFnt_In,
 
-			TEXT_REPORT_MAX_W, // int W_FirstLine_In,
-			TEXT_REPORT_MAX_W // int W_Subsequently_In
+			GetTextReportWidth(), // int W_FirstLine_In,
+			GetTextReportWidth() // int W_Subsequently_In
 		);
 
 		// Iterate through list of strings, adding each as teletype gadgets to the report,
@@ -651,8 +657,8 @@ void TextReportGadget :: DirectAddTeletypeLine
 
 				*pLetterFont, // const IndexedFont& IndexedFnt_In,
 
-				TEXT_REPORT_MAX_W, // int W_FirstLine_In,
-				TEXT_REPORT_MAX_W // int W_Subsequently_In
+				GetTextReportWidth(), // int W_FirstLine_In,
+				GetTextReportWidth() // int W_Subsequently_In
 			);
 
 			pSCString_ToAdd -> R_Release();

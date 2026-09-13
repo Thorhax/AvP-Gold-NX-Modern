@@ -24,6 +24,8 @@
 		#include "r2base.h"
 	#endif
 
+	#include "inline.h"
+
 #ifdef __cplusplus
 	
 	#ifndef _scstring
@@ -210,7 +212,8 @@
 
 		inline int GetMaxWidth(void) const
 		{
-			return HUD_FONT_WIDTH;
+			extern int HUDScaleFactor;
+			return (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, HUD_FONT_WIDTH) : HUD_FONT_WIDTH;
 		}
 
 		inline int GetWidth
@@ -218,13 +221,16 @@
 			ProjChar ProjCh
 		) const
 		{
-			return AAFontWidths[(unsigned char)ProjCh];
+			extern int HUDScaleFactor;
+			int w = AAFontWidths[(unsigned char)ProjCh];
+			return (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, w) : w;
 		}
 		
 		inline int GetHeight(void) const
 		{
-			// +2 for line spacing 
-			return HUD_FONT_HEIGHT+2;
+			extern int HUDScaleFactor;
+			int h = HUD_FONT_HEIGHT+4;
+			return (HUDScaleFactor > ONE_FIXED) ? MUL_FIXED(HUDScaleFactor, h) : HUD_FONT_HEIGHT+2;
 		}
 
 		r2size CalcSize

@@ -109,7 +109,7 @@ static int CheckForSkip(uint32_t start_ticks, int *button_released)
 	return 0;
 }
 
-static int FindMovieFilePath(const char *filename, char *out_path, size_t max_len)
+int FindMovieFilePath(const char *filename, char *out_path, size_t max_len)
 {
 	struct stat st;
 

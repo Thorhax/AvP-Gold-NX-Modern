@@ -4054,7 +4054,14 @@ static int HeightOfMenuElement(AVPMENU_ELEMENT *elementPtr)
 		extern int HUDScaleFactor;
 		if (HUDScaleFactor > ONE_FIXED)
 		{
-			h = MUL_FIXED(HUDScaleFactor, h);
+			if (AvPMenus.FontToUse != AVPMENU_FONT_BIG)
+			{
+				h = MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT + 8);
+			}
+			else
+			{
+				h = MUL_FIXED(HUDScaleFactor, h);
+			}
 		}
 	}
 	return h;
@@ -5500,19 +5507,19 @@ void RenderBriefingText(int centreY, int brightness)
 {
 	int lengthOfLongestLine=-1;
 	int x,y,i;
-	int font_height = HUD_FONT_HEIGHT;
 	extern int HUDScaleFactor;
+	int scaleFactor = (HUDScaleFactor >= ONE_FIXED) ? HUDScaleFactor :
+		(ScreenDescriptorBlock.SDB_Width >= 640 ? DIV_FIXED(ScreenDescriptorBlock.SDB_Width, 640) : ONE_FIXED);
 
-	if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS && HUDScaleFactor > ONE_FIXED)
-	{
-		font_height = MUL_FIXED(HUDScaleFactor, HUD_FONT_HEIGHT);
-	}
+	int line_spacing = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 8);
+	int title_spacing = MUL_FIXED(scaleFactor, HUD_FONT_HEIGHT + 18);
 
 	for(i=0; i<5; i++)
 	{
 		int length = 0;
 		{
 			char *ptr = BriefingTextString[i];
+			if (!ptr) continue;
 
 			while(*ptr)
 			{
@@ -5520,10 +5527,7 @@ void RenderBriefingText(int centreY, int brightness)
 			}
 		}
 
-		if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS && HUDScaleFactor > ONE_FIXED)
-		{
-			length = MUL_FIXED(HUDScaleFactor, length);
-		}
+		length = MUL_FIXED(scaleFactor, length);
 		
 		if (lengthOfLongestLine < length)
 		{
@@ -5532,19 +5536,25 @@ void RenderBriefingText(int centreY, int brightness)
 	}
 
 	x = (ScreenDescriptorBlock.SDB_Width-lengthOfLongestLine)/2;
-	y = centreY - 3*font_height;
+	if (x < 20) x = 20;
+
+	// Calculate total height to center briefing block properly
+	int total_height = title_spacing;
+	for(i=1; i<5; i++)
+	{
+		if (BriefingTextString[i] && BriefingTextString[i][0] && strcmp(BriefingTextString[i], BlankLine) != 0)
+			total_height += line_spacing;
+	}
+	y = centreY - total_height/2;
+
 	for(i=0; i<5; i++)
 	{
-		if (AvPMenus.MenusState != MENUSSTATE_MAINMENUS)
-		{
-			Hardware_RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED/*,MENU_CENTREY-60-100,MENU_CENTREY-60+180*/);
-		}
-		else
-		{
-			RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED);
-		}
-		if (i) y+=font_height;
-		else y+=font_height*2;
+		if (!BriefingTextString[i] || !BriefingTextString[i][0] || strcmp(BriefingTextString[i], BlankLine) == 0)
+			continue;
+
+		Hardware_RenderSmallMenuText(BriefingTextString[i], x, y, brightness, AVPMENUFORMAT_LEFTJUSTIFIED);
+		if (i == 0) y += title_spacing;
+		else y += line_spacing;
 	}
 }
 

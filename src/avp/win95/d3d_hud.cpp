@@ -526,7 +526,7 @@ void D3D_DrawHUDFontCharacter(HUDCharDesc *charDescPtr)
 	imageDesc.Height = HUD_FONT_HEIGHT+2;
 	imageDesc.Width = HUD_FONT_WIDTH+2;
 
-	imageDesc.Scale = ONE_FIXED;
+	imageDesc.Scale = (HUDScaleFactor > ONE_FIXED) ? HUDScaleFactor : ONE_FIXED;
 	imageDesc.Translucency = charDescPtr->Alpha;
 	imageDesc.Red = charDescPtr->Red;
 	imageDesc.Green = charDescPtr->Green;

@@ -28,7 +28,7 @@ typedef unsigned int 	FMVHandle;
 extern FMVHandle  	CreateBinkFMV(char* filenamePtr);
 extern int			UpdateBinkFMV(FMVHandle aFmvHandle, int volume);
 extern void 		CloseBinkFMV(FMVHandle aFmvHandle);
-extern char*		GetBinkFMVImage(FMVHandle aFmvHandle);
+extern int FindMovieFilePath(const char *filename, char *out_path, size_t max_len);
 
 #ifdef __cplusplus
 }
