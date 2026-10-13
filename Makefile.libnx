@@ -252,6 +252,7 @@ export OFILES 	:=	src/avp/ai_sight.o \
 					src/module.o \
 					src/morph.o \
 					src/net.o \
+					src/gyro.o \
 					src/nxlink.o \
 					src/object.o \
 					src/oglfunc.o \
