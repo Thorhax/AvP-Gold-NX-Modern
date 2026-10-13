@@ -1298,6 +1298,8 @@ static void handle_keypress(int key, int unicode, int press)
 	KeyboardInput[key] = press;
 }
 
+extern void NewOnScreenMessage(unsigned char *messagePtr);
+static int r3_held = 0;
 void CheckForWindowsMessages()
 {
 	SDL_Event event;
@@ -1384,7 +1386,7 @@ void CheckForWindowsMessages()
 	}
 	
 	buttons = SDL_GetRelativeMouseState(&x, &y);
-	
+
 	if (wantmouse) {
 		if (buttons & SDL_BUTTON(1))
 			handle_keypress(KEY_LMOUSE, 0, 1);
@@ -1407,6 +1409,18 @@ void CheckForWindowsMessages()
 		KeyboardInput[KEY_RMOUSE] = 0;
 		MouseVelX = 0;
 		MouseVelY = 0;
+	}
+
+	{
+		extern void NX_GyroRead(float, int *, int *);
+		int gx, gy;
+		if (main_loop_state == 5 && !InGameMenusAreRunning()) {
+			NX_GyroRead((float)NormalFrameTime / 65536.0f, &gx, &gy);
+			if (gx || gy) {
+				MouseVelX += DIV_FIXED(gx, NormalFrameTime);
+				MouseVelY += DIV_FIXED(gy, NormalFrameTime);
+			}
+		}
 	}
 
 	if (GotJoystick) {
@@ -1444,6 +1458,15 @@ void CheckForWindowsMessages()
 						continue;
 					}
 				} else if (!in_menu) {
+					// R3 toggles gyro on/off (swallowed, not passed to the game)
+					if (x == 5) {
+						if (!r3_held) {
+							extern int NX_GyroToggle(void);
+							NewOnScreenMessage(NX_GyroToggle() ? (unsigned char *)"GYRO ON" : (unsigned char *)"GYRO OFF");
+						}
+						r3_held = 1;
+						continue;
+					}
 					// In-game: Plus button toggles in-game pause menu
 					if (x == 10) { // Plus
 						if (!KeyboardInput[KEY_ESCAPE]) {
@@ -1473,6 +1496,7 @@ void CheckForWindowsMessages()
 						KeyboardInput[KEY_ESCAPE] = 0;
 					}
 				}
+				if (x == 5) r3_held = 0;
 				KeyboardInput[KEY_JOYSTICK_BUTTON_1+x] = 0;
 			}	
 		}
@@ -1754,6 +1778,7 @@ extern void cleanup_nxlink(void);
 int main(int argc, char *argv[])
 {			
 	setup_nxlink();
+	{ extern void NX_GyroInit(void); NX_GyroInit(); }
 	atexit(cleanup_nxlink);
 	
 #if !defined(_MSC_VER)
